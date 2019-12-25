@@ -5,7 +5,7 @@ import os
 
 # release video
 image_folder = '/home/zwenbo/Documents/research/deform/deform/img'
-video_name = '/home/zwenbo/Documents/research/deform/deform/video/video_030_v1.avi'
+video_name = '/home/zwenbo/Documents/research/deform/deform/video/video_line2knot_v1.avi'
 
 images_temp = [img for img in os.listdir(image_folder)] #if img.endswith(str(i) + ".png")]
 images = []
