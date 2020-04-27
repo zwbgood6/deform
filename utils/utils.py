@@ -127,22 +127,22 @@ def collision_check():
 
     return
 
-def plot_train_loss(file_name):
+def plot_train_loss(file_name, folder_name):
     train_loss = np.load(file_name)
     plt.figure()
     plt.plot(train_loss)
     plt.title('Train Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
-    plt.savefig('./result/plot/train_loss.png')
+    plt.savefig('./result/{}/plot/train_loss.png'.format(folder_name))
     plt.close()
 
-def plot_error(file_name):
+def plot_error(file_name, folder_name):
     error = np.load(file_name)
     plt.figure()
     plt.plot(error)
     plt.title('L2 Error in Latent Space')
     plt.xlabel('Epochs')
     plt.ylabel('Error')
-    plt.savefig('./result/plot/error.png')
+    plt.savefig('./result/{}/plot/error.png'.format(folder_name))
     plt.close()

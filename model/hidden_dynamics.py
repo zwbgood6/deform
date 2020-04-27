@@ -8,7 +8,7 @@ def get_U(run_num, train_num):
     run_num: string, e.g., 'run03'
     total_img_num: number of images under 'run03'
     '''
-    add1 = '/home/zwenbo/Documents/research/deform/rope_dataset/rope/'
+    add1 = './rope_dataset/rope/'
     add2 = run_num
     add3 = '/actions.npy'
     U = np.load(add1+add2+add3)
@@ -21,7 +21,7 @@ def get_G(model, dataset):
     for idx in range(n):
         data = dataset.__getitem__(idx)
         data = data.float().to(device).view(-1, 50*50) # TODO: 50*50, input 250
-        latent = model.encoder(data).detach().numpy().reshape(-1).tolist()
+        latent = model.encoder(data).detach().cpu().numpy().reshape(-1).tolist()
         G.append(latent)
     return np.array(G[1:]) - np.array(G[:-1])
 
@@ -48,5 +48,21 @@ def get_error(G, U, L):
     '''
     return norm(G-U.dot(L.T), 2) 
 
+def get_next_state(embedded_state, action, L):
+    '''get next embedded state after certain steps
+    g_{t+k} = g_{t} + L * (u_{t} + u_{t+1} + ... + u_{t+k-1})
+
+    embedded_state: 1 * len(x_i)
+    action:         m * len(u_i), m is the number of predicted steps
+    L:              len(x_i) * len(u_i), control matrix  
+    '''
+    sum_action = np.sum(action, axis=0)
+    return embedded_state + sum_action.dot(L.T)
+
+def get_step_error(embedded_state, action, L, ):
+    '''get error with certain steps in latent space 
+
+    '''
+    
 # if __name__ == "__main__":
 #     U = get_U(run_num='run05') 

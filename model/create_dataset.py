@@ -36,7 +36,7 @@ def create_image_path(run_num, total_img_num):
     run_num: string, e.g., 'run03'
     total_img_num: number of images under 'run03'
     '''
-    add1 = '/home/zwenbo/Documents/research/deform/rope_dataset/rope_seg/'
+    add1 = './rope_dataset/rope_seg/'
     add2 = run_num
     image_paths = []
     for i in range(total_img_num):
