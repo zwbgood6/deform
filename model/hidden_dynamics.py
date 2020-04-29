@@ -20,7 +20,7 @@ def get_G(model, dataset):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     for idx in range(n):
         data = dataset.__getitem__(idx)
-        data = data.float().to(device).view(-1, 50*50) # TODO: 50*50, input 250
+        data = data.float().to(device).view(-1, 1, 50, 50) # TODO: 50*50, input 250
         latent = model.encoder(data).detach().cpu().numpy().reshape(-1).tolist()
         G.append(latent)
     return np.array(G[1:]) - np.array(G[:-1])

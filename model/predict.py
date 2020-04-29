@@ -28,25 +28,55 @@ class AE(nn.Module):
         x = self.encoder(x.view(-1, 2500))
         return self.decoder(x)  
 
+class CAE(nn.Module):
+    def __init__(self, latent_dim=10):
+        super(CAE, self).__init__()
+        self.conv_layers = nn.Sequential(nn.Conv2d(1, 16, 3, padding=1),
+                                         nn.ReLU(),
+                                         nn.MaxPool2d(2, stride=2),
+                                         nn.Conv2d(16, 4, 3, padding=1),
+                                         nn.ReLU(),
+                                         nn.MaxPool2d(2, stride=2))
+        self.fc1 = nn.Linear(4*12*12, latent_dim)
+        self.fc2 = nn.Linear(latent_dim, 4*12*12)
+        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(4, 16, 5, stride=2, padding=1),
+                                          nn.ReLU(),
+                                          nn.ConvTranspose2d(16, 1, 4, stride=2, padding=1),
+                                          nn.Sigmoid())
+
+    def encoder(self, x):
+        x = self.conv_layers(x)
+        x = x.view(x.shape[0], -1)
+        return self.fc1(x)
+
+    def decoder(self, x):
+        x = self.fc2(x)
+        x = x.view(-1, 4, 12, 12) #(batch size, channel, H, W)
+        return self.dconv_layers(x)
+
+    def forward(self, x):
+        x = self.encoder(x)                
+        return self.decoder(x)
+
 def predict(dataset, actions, L, step=1):
     n = dataset.__len__()
     with torch.no_grad():
         for idx in range(n): 
             data = dataset.__getitem__(idx)
-            data = data.float().to(device).view(-1, 50*50)
-            embedded_state = model.encoder(data).numpy()
+            data = data.float().to(device).view(-1, 1, 50, 50)
+            embedded_state = model.encoder(data).cpu().numpy()
             action = actions[idx:idx+step][:]
             next_embedded_state = get_next_state(embedded_state, action, L)
-            recon_data = model.decoder(torch.from_numpy(next_embedded_state).float())
+            recon_data = model.decoder(torch.from_numpy(next_embedded_state).float().to(device))
             prediction = recon_data.view(50,50)
             save_image(prediction.cpu(), './result/{}/prediction_step{}/predict_{}.png'.format(folder_name, step, idx+step))
 
 
-folder_name = 'test_L'
+folder_name = 'test_CAE'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = AE().to(device)
+model = CAE().to(device)
 #optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # load check point
