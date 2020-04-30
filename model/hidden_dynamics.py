@@ -12,7 +12,7 @@ def get_U(run_num, train_num):
     add2 = run_num
     add3 = '/actions.npy'
     U = np.load(add1+add2+add3)
-    return U[:train_num-1][:]
+    return U[:train_num-1, :4]
 
 def get_G(model, dataset):
     n = dataset.__len__()

@@ -32,19 +32,19 @@ class AE(nn.Module):
         return self.decoder(x)  
 
 class CAE(nn.Module):
-    def __init__(self, latent_dim=10):
+    def __init__(self, latent_dim=16):
         super(CAE, self).__init__()
-        self.conv_layers = nn.Sequential(nn.Conv2d(1, 16, 3, padding=1),
+        self.conv_layers = nn.Sequential(nn.Conv2d(1, 8, 3, padding=1),
                                          nn.ReLU(),
                                          nn.MaxPool2d(2, stride=2),
-                                         nn.Conv2d(16, 4, 3, padding=1),
+                                         nn.Conv2d(8, 16, 3, padding=1),
                                          nn.ReLU(),
                                          nn.MaxPool2d(2, stride=2))
-        self.fc1 = nn.Linear(4*12*12, latent_dim)
-        self.fc2 = nn.Linear(latent_dim, 4*12*12)
-        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(4, 16, 5, stride=2, padding=1),
+        self.fc1 = nn.Linear(16*12*12, latent_dim)
+        self.fc2 = nn.Linear(latent_dim, 16*12*12)
+        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(16, 8, 3, stride=2, padding=0),
                                           nn.ReLU(),
-                                          nn.ConvTranspose2d(16, 1, 4, stride=2, padding=1),
+                                          nn.ConvTranspose2d(8, 1, 2, stride=2, padding=0),
                                           nn.Sigmoid())
 
     def encoder(self, x):
@@ -54,7 +54,7 @@ class CAE(nn.Module):
 
     def decoder(self, x):
         x = self.fc2(x)
-        x = x.view(-1, 4, 12, 12) #(batch size, channel, H, W)
+        x = x.view(-1, 16, 12, 12) #(batch size, channel, H, W)
         return self.dconv_layers(x)
 
     def forward(self, x):
@@ -76,9 +76,22 @@ def mse(recon_x, x):
     recon_x: numpy array
     x: numpy array
     '''
-    return F.mse_loss(torch.from_numpy(recon_x), torch.from_numpy(x)) 
+    return F.mse_loss(recon_x, x) 
 
-def train(model, trainset, epochs, step=1):   
+def constraint_loss(steps, idx, trainset, U, L):
+    loss = 0
+    data = trainset.__getitem__(idx).float().to(device).view(-1, 1, 50, 50)
+    embed_state = model.encoder(data).detach().cpu().numpy()
+    for i in range(steps):
+        step = i + 1  
+        data_next = trainset.__getitem__(idx+step).float().to(device).view(-1, 1, 50, 50)
+        action = U[idx:idx+step][:]
+        embed_state_next = torch.from_numpy(get_next_state(embed_state, action, L)).float()
+        recon_state_next = model.decoder(embed_state_next).detach().cpu()#.numpy()
+        loss += mse(recon_state_next, data_next)
+    return loss
+
+def train(model, trainset, epochs, step):   
     n = trainset.__len__()
     error = []
     train_loss_all = []
@@ -96,16 +109,10 @@ def train(model, trainset, epochs, step=1):
             recon_data = model(data)
             # loss of autoencoder
             loss = loss_function(recon_data, data)
-            # loss of single step
+            # loss of 1->k steps
             if L is not None and idx > 0 and idx < n-step:
                 model.eval()
-                embed_state = model.encoder(data).detach().cpu().numpy()
-                data_next = trainset.__getitem__(idx+step)
-                data_next = data_next.float().to(device).view(-1, 1, 50, 50)
-                embed_state_next = model.encoder(data_next).detach().cpu().numpy()
-                action = U[idx:idx+step][:]
-                recon_embed_state_next = get_next_state(embed_state, action, L)
-                loss += GAMMA1 * mse(recon_embed_state_next, embed_state_next)
+                loss += GAMMA1 * constraint_loss(step, idx, trainset, U, L)
                 model.train()
             # loss of all steps
             if idx == n-1:
@@ -115,7 +122,7 @@ def train(model, trainset, epochs, step=1):
                 L = get_control_matrix(G, U)
                 err_tmp = get_error(G, U, L)
                 error.append(err_tmp)
-                loss = loss_function(recon_data, data) + GAMMA2 * torch.tensor(err_tmp)
+                loss += GAMMA2 * torch.tensor(err_tmp)#loss_function(recon_data, data) + GAMMA2 * torch.tensor(err_tmp)
                 model.train() 
             loss.backward()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
             train_loss += loss.item()
@@ -174,9 +181,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = CAE().to(device)
 #model = AE().to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-epochs = 2
-GAMMA1 = 10
-GAMMA2 = 10
+epochs = 1
+GAMMA1 = 100
+GAMMA2 = 1
 folder_name = 'test_CAE'
 
 if not os.path.exists('./result/' + folder_name):
@@ -186,7 +193,7 @@ if not os.path.exists('./result/' + folder_name + '/plot'):
 if not os.path.exists('./result/' + folder_name + '/reconstruction'):
     os.makedirs('./result/' + folder_name + '/reconstruction')
 
-train_loss, error = train(model, trainset, epochs)
+train_loss, error = train(model, trainset, epochs, step=4)
 np.save('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), train_loss)
 np.save('./result/{}/error_epoch{}.npy'.format(folder_name, epochs), error)
 

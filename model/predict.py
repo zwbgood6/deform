@@ -29,19 +29,19 @@ class AE(nn.Module):
         return self.decoder(x)  
 
 class CAE(nn.Module):
-    def __init__(self, latent_dim=10):
+    def __init__(self, latent_dim=16):
         super(CAE, self).__init__()
-        self.conv_layers = nn.Sequential(nn.Conv2d(1, 16, 3, padding=1),
+        self.conv_layers = nn.Sequential(nn.Conv2d(1, 8, 3, padding=1),
                                          nn.ReLU(),
                                          nn.MaxPool2d(2, stride=2),
-                                         nn.Conv2d(16, 4, 3, padding=1),
+                                         nn.Conv2d(8, 16, 3, padding=1),
                                          nn.ReLU(),
                                          nn.MaxPool2d(2, stride=2))
-        self.fc1 = nn.Linear(4*12*12, latent_dim)
-        self.fc2 = nn.Linear(latent_dim, 4*12*12)
-        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(4, 16, 5, stride=2, padding=1),
+        self.fc1 = nn.Linear(16*12*12, latent_dim)
+        self.fc2 = nn.Linear(latent_dim, 16*12*12)
+        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(16, 8, 3, stride=2, padding=0),
                                           nn.ReLU(),
-                                          nn.ConvTranspose2d(16, 1, 4, stride=2, padding=1),
+                                          nn.ConvTranspose2d(8, 1, 2, stride=2, padding=0),
                                           nn.Sigmoid())
 
     def encoder(self, x):
@@ -51,14 +51,14 @@ class CAE(nn.Module):
 
     def decoder(self, x):
         x = self.fc2(x)
-        x = x.view(-1, 4, 12, 12) #(batch size, channel, H, W)
+        x = x.view(-1, 16, 12, 12) #(batch size, channel, H, W)
         return self.dconv_layers(x)
 
     def forward(self, x):
         x = self.encoder(x)                
         return self.decoder(x)
 
-def predict(dataset, actions, L, step=1):
+def predict(dataset, actions, L, step):
     n = dataset.__len__()
     with torch.no_grad():
         for idx in range(n): 
@@ -68,7 +68,7 @@ def predict(dataset, actions, L, step=1):
             action = actions[idx:idx+step][:]
             next_embedded_state = get_next_state(embedded_state, action, L)
             recon_data = model.decoder(torch.from_numpy(next_embedded_state).float().to(device))
-            prediction = recon_data.view(50,50)
+            prediction = recon_data.view(1,50,50)
             save_image(prediction.cpu(), './result/{}/prediction_step{}/predict_{}.png'.format(folder_name, step, idx+step))
 
 
@@ -107,8 +107,8 @@ L = np.load('./result/{}/control_matrix.npy'.format(folder_name))
 # prediction
 print('***** Start Prediction *****')
 model.eval()
-step=1
+step=2
 if not os.path.exists('./result/{}/prediction_step{}'.format(folder_name, step)):
     os.makedirs('./result/{}/prediction_step{}'.format(folder_name, step))
-predict(dataset, actions, L, step)
+predict(dataset, actions, L, step=step)
 print('***** Finish Prediction *****')
