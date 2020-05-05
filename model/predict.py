@@ -29,37 +29,63 @@ class AE(nn.Module):
         return self.decoder(x)  
 
 class CAE(nn.Module):
-    def __init__(self, latent_dim=16):
+    def __init__(self, latent_state_dim=500, latent_act_dim=100):
         super(CAE, self).__init__()
-        self.conv_layers = nn.Sequential(nn.Conv2d(1, 8, 3, padding=1),
+        # state
+        self.conv_layers = nn.Sequential(nn.Conv2d(1, 8, 7, padding=0),
                                          nn.ReLU(),
-                                         nn.MaxPool2d(2, stride=2),
-                                         nn.Conv2d(8, 16, 3, padding=1),
+                                         nn.MaxPool2d(7, stride=2),
+                                         nn.Conv2d(8, 16, 7, padding=0),
                                          nn.ReLU(),
-                                         nn.MaxPool2d(2, stride=2))
-        self.fc1 = nn.Linear(16*12*12, latent_dim)
-        self.fc2 = nn.Linear(latent_dim, 16*12*12)
-        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(16, 8, 3, stride=2, padding=0),
+                                         nn.MaxPool2d(7, stride=2))
+        self.fc1 = nn.Linear(16*4*4, latent_state_dim)
+        self.fc2 = nn.Linear(latent_state_dim, 16*4*4)
+        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(16, 8, 7, stride=3, padding=0),
                                           nn.ReLU(),
-                                          nn.ConvTranspose2d(8, 1, 2, stride=2, padding=0),
+                                          nn.ConvTranspose2d(8, 1, 5, stride=3, padding=0),
                                           nn.Sigmoid())
+        # action
+        self.fc5 = nn.Linear(5, 30)
+        self.fc6 = nn.Linear(30, latent_act_dim) # TODO: add ConV, max pooling, and add layers
+        self.fc7 = nn.Linear(latent_act_dim, 30) # 10-100
+        self.fc8 = nn.Linear(30, 5)  
 
     def encoder(self, x):
         x = self.conv_layers(x)
-        x = x.view(x.shape[0], -1)
-        return self.fc1(x)
+        x = x.view(x.shape[0], -1)    
+        return relu(self.fc1(x))
 
     def decoder(self, x):
-        x = self.fc2(x)
-        x = x.view(-1, 16, 12, 12) #(batch size, channel, H, W)
+        x = relu(self.fc2(x))
+        x = x.view(-1, 16, 4, 4) #(batch size, channel, H, W)
         return self.dconv_layers(x)
+    
+    def encoder_act(self, u):
+        h1 = relu(self.fc5(u)) # relu -> tanh for all relu's # TODO: relu
+        return relu(self.fc6(h1))
 
-    def forward(self, x):
-        x = self.encoder(x)                
-        return self.decoder(x)
+    def decoder_act(self, u):
+        h2 = relu(self.fc7(u))
+        return sigmoid(self.fc8(h2))   
+
+    def forward(self, x, u):
+        x = self.encoder(x) 
+        u = self.encoder_act(u)               
+        return self.decoder(x), self.decoder_act(u)
+
+def get_latent_U(U):
+    U_latent = []           
+    for u in U:
+        u = torch.from_numpy(u).to(device).float().view(-1, 5) 
+        u = model.encoder_act(u).detach().cpu().numpy()
+        U_latent.append(u)
+    n = np.shape(U)[0]        
+    d = np.array(U_latent).shape[2] 
+    return np.resize(np.array(U_latent), (n,d))
 
 def predict(dataset, actions, L, step):
     n = dataset.__len__()
+    actions = get_latent_U(actions)
     with torch.no_grad():
         for idx in range(n): 
             data = dataset.__getitem__(idx)
@@ -72,7 +98,7 @@ def predict(dataset, actions, L, step):
             save_image(prediction.cpu(), './result/{}/prediction_step{}/predict_{}.png'.format(folder_name, step, idx+step))
 
 
-folder_name = 'test_CAE'
+folder_name = 'test_new_CAE3'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -107,7 +133,7 @@ L = np.load('./result/{}/control_matrix.npy'.format(folder_name))
 # prediction
 print('***** Start Prediction *****')
 model.eval()
-step=2
+step=4
 if not os.path.exists('./result/{}/prediction_step{}'.format(folder_name, step)):
     os.makedirs('./result/{}/prediction_step{}'.format(folder_name, step))
 predict(dataset, actions, L, step=step)

@@ -1,6 +1,6 @@
 import numpy as np
 import numpy
-from numpy.linalg import inv, norm
+from numpy.linalg import inv, pinv, norm, det
 import torch 
 
 def get_U(run_num, train_num):
@@ -12,7 +12,7 @@ def get_U(run_num, train_num):
     add2 = run_num
     add3 = '/actions.npy'
     U = np.load(add1+add2+add3)
-    return U[:train_num-1, :4]
+    return U[:train_num][:]
 
 def get_G(model, dataset):
     n = dataset.__len__()
@@ -35,7 +35,8 @@ def get_control_matrix(G, U):
     n, d = np.shape(U)[0], np.shape(U)[1]
     # U is a thin matrix
     if n > d:
-        return (inv(U.T.dot(U)).dot(U.T).dot(G)).T  
+        eps = 1e-5
+        return (pinv(U.T.dot(U)+eps*np.identity(d)).dot(U.T).dot(G)).T 
     # U is a fat matrix   
     elif n < d:
         return (U.T.dot(inv(U.dot(U.T))).dot(G)).T  
