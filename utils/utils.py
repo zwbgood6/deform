@@ -137,12 +137,43 @@ def plot_train_loss(file_name, folder_name):
     plt.savefig('./result/{}/plot/train_loss.png'.format(folder_name))
     plt.close()
 
-def plot_error(file_name, folder_name):
-    error = np.load(file_name)
+def plot_test_loss(file_name, folder_name):
+    test_loss = np.load(file_name)
     plt.figure()
-    plt.plot(error)
-    plt.title('L2 Error in Latent Space')
+    plt.plot(test_loss)
+    plt.title('Test Loss')
     plt.xlabel('Epochs')
-    plt.ylabel('Error')
-    plt.savefig('./result/{}/plot/error.png'.format(folder_name))
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/test_loss.png'.format(folder_name))
+    plt.close()    
+
+
+def plot_img_loss(file_name, folder_name):
+    img_loss = np.load(file_name)
+    plt.figure()
+    plt.plot(img_loss)
+    plt.title('Image Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/image_loss.png'.format(folder_name))
+    plt.close()
+
+def plot_act_loss(file_name, folder_name):
+    act_loss = np.load(file_name)
+    plt.figure()
+    plt.plot(act_loss)
+    plt.title('Action Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/action_loss.png'.format(folder_name))
+    plt.close()
+
+def plot_latent_loss(file_name, folder_name):
+    latent_loss = np.load(file_name)
+    plt.figure()
+    plt.plot(latent_loss)
+    plt.title('Latent Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/latent_loss.png'.format(folder_name))
     plt.close()
