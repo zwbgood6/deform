@@ -120,7 +120,7 @@ def get_next_state(latent_image_pre, latent_action, L):
     action:         m * len(u_i), m is the number of predicted steps
     L:              len(x_i) * len(u_i), control matrix  
     '''
-    return latent_image_pre + latent_action.mm(L.t())
+    return latent_image_pre + latent_action.mm(L.t().to(device))
 
 def get_step_error(embedded_state, action, L, ):
     '''get error with certain steps in latent space 

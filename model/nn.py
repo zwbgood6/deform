@@ -269,7 +269,7 @@ for epoch in range(1, epochs+1):
         np.save('./result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs), latent_loss_all)
         np.save('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), test_loss_all)
         L_d = L.detach().cpu().numpy()
-        np.save('./result/{}/control_matrix.npy'.format(folder_name), L_d) # TODO: does it influence the result?
+        np.save('./result/{}/control_matrix.npy'.format(folder_name), L_d) 
         # save checkpoint
         PATH = './result/{}/checkpoint'.format(folder_name)
         torch.save({
@@ -285,7 +285,8 @@ np.save('./result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs), img_loss
 np.save('./result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs), act_loss_all)
 np.save('./result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs), latent_loss_all)
 np.save('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), test_loss_all)
-np.save('./result/{}/control_matrix.npy'.format(folder_name), L.detach().numpy())
+L_d = L.detach().cpu().numpy()
+np.save('./result/{}/control_matrix.npy'.format(folder_name), L_d)
 # test
 # print('***** Start Testing *****')
 # test_loss = test(dataset) # TODO: get reconstruction for trainset

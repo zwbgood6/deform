@@ -98,7 +98,7 @@ def predict(L):
                 comparison = torch.cat([batch_data['image_post'][:n],
                                       recon_img_post.view(-1, 1, 50, 50).cpu()[:n]])
                 save_image(comparison.cpu(),
-                         './result/{}/prediction_step{}/prediction.png'.format(folder_name, step), nrow=n)                                         
+                         './result/{}/prediction_step{}/prediction_batch{}.png'.format(folder_name, step, batch_idx), nrow=n)                                         
 
 
 print('***** Preparing Data *****')
