@@ -4,7 +4,7 @@ from numpy.linalg import inv, pinv, norm, det
 import torch 
 
 
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # def get_U(run_num, train_num):
 #     '''assemble total_img_num actions in folder run_num 
 #     run_num: string, e.g., 'run03'
@@ -84,16 +84,16 @@ def get_control_matrix(G, U):
     # U is a thin matrix
     if n > d:
         eps = 1e-5
-        return (torch.inverse(U.t().mm(U) + eps*torch.eye(d).mm(U.t()).mm(G))).t()
+        return (torch.inverse(U.t().mm(U) + eps*torch.eye(d).to(device).mm(U.t()).mm(G)).to(device)).t()
         #return (pinv(U.T.dot(U)+eps*np.identity(d)).dot(U.T).dot(G)).T 
     # U is a fat matrix   
     elif n < d:
         eps = 1e-5
-        return (U.t().mm(torch.inverse(U.mm(U.t()) + eps*torch.eye(n))).mm(G)).t()  
+        return (U.t().mm(torch.inverse(U.mm(U.t()) + eps*torch.eye(n).to(device))).to(device).mm(G)).t()  
         #return (U.T.dot(pinv(U.dot(U.T)+eps*np.identity(n))).dot(G)).T  
     # U is a squared matrix       
     else: 
-        return (torch.inverse(U).mm(G)).t()
+        return (torch.inverse(U).to(device).mm(G)).t()
         # return (inv(U).dot(G)).T
 
 def get_error(G, U, L):
@@ -101,7 +101,18 @@ def get_error(G, U, L):
     ''' 
     return torch.norm(G-U.mm(L.t()))
 
-def get_next_state(embedded_state, action, L):
+# def get_next_state(embedded_state, action, L):
+#     '''get next embedded state after certain steps
+#     g_{t+k} = g_{t} + L * (u_{t} + u_{t+1} + ... + u_{t+k-1})
+
+#     embedded_state: 1 * len(x_i)
+#     action:         m * len(u_i), m is the number of predicted steps
+#     L:              len(x_i) * len(u_i), control matrix  
+#     '''
+#     sum_action = np.sum(action, axis=0)
+#     return embedded_state + sum_action.dot(L.T)
+
+def get_next_state(latent_image_pre, latent_action, L):
     '''get next embedded state after certain steps
     g_{t+k} = g_{t} + L * (u_{t} + u_{t+1} + ... + u_{t+k-1})
 
@@ -109,8 +120,7 @@ def get_next_state(embedded_state, action, L):
     action:         m * len(u_i), m is the number of predicted steps
     L:              len(x_i) * len(u_i), control matrix  
     '''
-    sum_action = np.sum(action, axis=0)
-    return embedded_state + sum_action.dot(L.T)
+    return latent_image_pre + latent_action.mm(L.t())
 
 def get_step_error(embedded_state, action, L, ):
     '''get error with certain steps in latent space 

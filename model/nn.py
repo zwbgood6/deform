@@ -16,36 +16,34 @@ class CAE(nn.Module):
     def __init__(self, latent_state_dim=500, latent_act_dim=100):
         super(CAE, self).__init__()
         # state
-        self.conv_layers = nn.Sequential(nn.Conv2d(1, 8, 3, padding=1), # 
+        self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
                                          nn.ReLU(),
                                          nn.MaxPool2d(3, stride=2),
-                                         nn.Conv2d(8, 16, 3, padding=1), # 
+                                         nn.Conv2d(32, 64, 3, padding=1), 
                                          nn.ReLU(),
                                          nn.MaxPool2d(3, stride=2),
-                                         nn.Conv2d(16, 32, 3, padding=1),
+                                         nn.Conv2d(64, 64, 3, padding=1),
                                          nn.ReLU(),
-                                         nn.MaxPool2d(3, stride=2),
-                                         nn.Conv2d(32, 64, 3, padding=1), # channel 1 32 64 64 
+                                         nn.Conv2d(64, 64, 3, padding=1), # channel 1 32 64 64; the next batch size should be larger than 8, 4 corner features + 4 direction features
                                          nn.ReLU(),
-                                         nn.MaxPool2d(3, stride=2))  # TODO: add conv relu conv relu max
-        self.fc1 = nn.Linear(64*2*2, latent_state_dim)
-        self.fc2 = nn.Linear(latent_state_dim, 64*2*2)
-        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(64, 32, 3, stride=3, padding=1),
+                                         nn.MaxPool2d(3, stride=2))  
+        self.fc1 = nn.Linear(64*5*5, latent_state_dim) # size: 64*5*5 > latent_state_dim
+        self.fc2 = nn.Linear(latent_state_dim, 64*5*5)
+        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(64, 64, 3, stride=2, padding=2),
                                           nn.ReLU(),
-                                          nn.ConvTranspose2d(32, 16, 3, stride=3, padding=1),
+                                          nn.ConvTranspose2d(64, 64, 3, stride=2, padding=1),
                                           nn.ReLU(), 
-                                          nn.ConvTranspose2d(16, 8, 3, stride=3, padding=2),
+                                          nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1),
                                           nn.ReLU(),                                         
-                                          nn.ConvTranspose2d(8, 1, 2, stride=2, padding=1),
+                                          nn.ConvTranspose2d(32, 1, 2, stride=2, padding=0),
                                           nn.Sigmoid())
         # action
         self.fc5 = nn.Linear(5, 30)
-        self.fc6 = nn.Linear(30, latent_act_dim) # TODO: add ConV, max pooling, and add layers
+        self.fc6 = nn.Linear(30, latent_act_dim) 
         self.fc7 = nn.Linear(latent_act_dim, 30) # 10-100
         self.fc8 = nn.Linear(30, 5)  
         # control matrix
-        #self.control_matrix = nn.Parameter(torch.tensor(init_value, requires_grad=True)) # TODO: backpropagation this matrix
-        self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True))
+        self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True)) # TODO: okay for random initializaion?
 
     def encoder(self, x):
         x = self.conv_layers(x)
@@ -54,7 +52,7 @@ class CAE(nn.Module):
 
     def decoder(self, x):
         x = relu(self.fc2(x))
-        x = x.view(-1, 64, 2, 2) #(batch size, channel, H, W)
+        x = x.view(-1, 64, 5, 5) #(batch size, channel, H, W)
         return self.dconv_layers(x)
     
     def encoder_act(self, u):
@@ -69,8 +67,7 @@ class CAE(nn.Module):
         x_pre = self.encoder(x_pre) 
         u = self.encoder_act(u)  
         x_post = self.encoder(x_post)     
-        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), self.control_matrix # TODO: change it / done
-
+        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), self.control_matrix
 
 def loss_function(recon_x, x):
     '''
@@ -169,13 +166,20 @@ def train_new(epoch):
                 epoch, batch_idx * len(batch_data['image_pre']), len(trainloader.dataset),
                 100. * batch_idx / len(trainloader),
                 loss.item() / len(batch_data['image_pre'])))    
+        # reconstruction
+        if batch_idx == 0:
+            n = min(batch_data['image_pre'].size(0), 8)
+            comparison = torch.cat([batch_data['image_pre'][:n],
+                                  recon_img_pre.view(-1, 1, 50, 50).cpu()[:n]]) 
+            save_image(comparison.cpu(),
+                     './result/{}/reconstruction_train/reconstruct_epoch_'.format(folder_name) + str(epoch) + '.png', nrow=n)      
 
     print('====> Epoch: {} Average loss: {:.4f}'.format(
           epoch, train_loss / len(trainloader.dataset)))
     n = len(trainloader.dataset)      
     return train_loss/n, img_loss/n, act_loss/n, latent_loss/n, L
 
-def test_new(epoch):
+def test_new(epoch, L):
     model.eval()
     test_loss = 0
     with torch.no_grad():
@@ -190,11 +194,11 @@ def test_new(epoch):
             img_post = batch_data['image_post']
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # model
-            latent_img_pre, latent_act, latent_img_post, recon_img_pre, recon_act, L = model(img_pre, act, img_post)
+            latent_img_pre, latent_act, latent_img_post, recon_img_pre, recon_act, _ = model(img_pre, act, img_post)
             # loss
             loss_img = loss_function_img(recon_img_pre, img_pre)
             loss_act = loss_function_act(recon_act, act)
-            loss_latent, _ = loss_function_latent(latent_img_pre, latent_img_post, latent_act, L, math=MATH)
+            loss_latent, _ = loss_function_latent(latent_img_pre, latent_img_post, latent_act, L, math=False)
             loss = loss_img + loss_act + loss_latent
             test_loss += loss.item()
             if batch_idx == 0:
@@ -203,13 +207,7 @@ def test_new(epoch):
                                       recon_img_pre.view(-1, 1, 50, 50).cpu()[:n]])
                 save_image(comparison.cpu(),
                          './result/{}/reconstruction_test/reconstruct_epoch_'.format(folder_name) + str(epoch) + '.png', nrow=n)                                         
-        for batch_idx, batch_data in enumerate(trainloader):
-            if batch_idx == 0:
-                n = min(batch_data['image_pre'].size(0), 8)
-                comparison = torch.cat([batch_data['image_pre'][:n],
-                                      recon_img_pre.view(-1, 1, 50, 50).cpu()[:n]])
-                save_image(comparison.cpu(),
-                         './result/{}/reconstruction_train/reconstruct_epoch_'.format(folder_name) + str(epoch) + '.png', nrow=n)             
+               
     n = len(testloader.dataset)
     return test_loss/n
 
@@ -237,7 +235,7 @@ print('***** Start Training & Testing *****')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = CAE().to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-epochs = 5
+epochs = 10
 folder_name = 'test_new_train1'
 
 if not os.path.exists('./result/' + folder_name):
@@ -257,20 +255,21 @@ test_loss_all = []
 
 for epoch in range(1, epochs+1):
     train_loss, img_loss, act_loss, latent_loss, L = train_new(epoch)
-    test_loss = test_new(epoch)
+    test_loss = test_new(epoch, L)
     train_loss_all.append(train_loss)
     img_loss_all.append(img_loss)
     act_loss_all.append(act_loss)
     latent_loss_all.append(latent_loss)
     test_loss_all.append(test_loss)
 #train_loss, error = train(model, trainset, epochs, step=1)
-    if epoch % 10 == 0:
+    if epoch % 1 == 0:
         np.save('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), train_loss_all)
         np.save('./result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs), img_loss_all)
         np.save('./result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs), act_loss_all)
         np.save('./result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs), latent_loss_all)
         np.save('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), test_loss_all)
-        #np.save('./result/{}/control_matrix.npy'.format(folder_name), L.detach().numpy()) # TODO: does it influence the result?
+        L_d = L.detach().cpu().numpy()
+        np.save('./result/{}/control_matrix.npy'.format(folder_name), L_d) # TODO: does it influence the result?
         # save checkpoint
         PATH = './result/{}/checkpoint'.format(folder_name)
         torch.save({
