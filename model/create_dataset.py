@@ -17,17 +17,17 @@ class MyDataset(Dataset):
         n = self.__len__()
         if index == n-1:
             index = index - 1
-        # transform images
+        # load images (pre-transform images)
         image_pre = Image.open(self.image_paths[index])
         image_post = Image.open(self.image_paths[index+1])
-        current_size = np.array(image_pre).shape[0]
-        output_size = 50
-        image_pre = self.transform_img(image_pre, output_size)
-        image_post = self.transform_img(image_post, output_size)
-        # transform x, y positions in action
+        image_pre = self.transform_img(image_pre)
+        image_post = self.transform_img(image_post)
+
+        # load action (pre-transform x, y positions in action)
         action = self.actions[index]
-        ratio = output_size / current_size
-        action = self.transform_act(action, ratio)
+        #ratio = output_size / current_size
+        #action = self.transform_act(action, ratio)
+        
         # sample = {state, action, next_state}
         sample = {'image_pre': image_pre, 'action': action, 'image_post': image_post}
         return sample
@@ -35,26 +35,26 @@ class MyDataset(Dataset):
     def __len__(self):
         return len(self.image_paths)
 
-    def transform_img(self, image, output_size):
-        image = TF.to_grayscale(image)
-        resize = transforms.Resize(size=(output_size, output_size))
-        image = resize(image)        
-        image = TF.to_tensor(image) 
+    def transform_img(self, image):
+        #image = TF.to_grayscale(image)  # TODO: change image to grayscale before traning
+        #resize = transforms.Resize(size=(output_size, output_size)) # TODO: resize image before traning
+        #image = resize(image)        
+        image = TF.to_tensor(image) # pixel value range [0,1]
         # binarize image
-        image = image > 0.5 
+        image = image > 0.3
         image = image.float()
         return image
 
-    def transform_act(self, action, ratio):
-        action[:2] = action[:2] * ratio
-        return action
+    # def transform_act(self, action, ratio):
+    #     action[:2] = action[:2] * ratio
+    #     return action
 
 
 def create_image_path(total_img_num):
     '''create image_path list as input of MyDataset
     total_img_num: number of images 
     '''
-    add1 = './rope_dataset/rope_all'
+    add1 = './rope_dataset/rope_all_resize_gray'
     image_paths = []
     for i in range(total_img_num):
         if len(str(i)) == 1:

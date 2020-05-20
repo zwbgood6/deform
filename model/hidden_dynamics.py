@@ -10,7 +10,29 @@ import torch
 #     run_num: string, e.g., 'run03'
 #     total_img_num: number of images under 'run03'
 #     '''
-#     add1 = './rope_dataset/rope/'
+#     add1 = './rope_ddef get_control_matrix(G, U):
+#     '''Calculate control matrix 
+#     G: n * len(x_i)
+#     U: n * len(u_i)
+#     return control matrix L: len(x_i) * len(u_i) 
+#     '''
+#     n, d = np.shape(U)[0], np.shape(U)[1]
+#     # U is a thin matrix
+#     if n > d:
+#         eps = 1e-5
+#         return (pinv(U.T.dot(U)+eps*np.identity(d)).dot(U.T).dot(G)).T 
+#     # U is a fat matrix   
+#     elif n < d:
+#         eps = 1e-5
+#         return (U.T.dot(pinv(U.dot(U.T)+eps*np.identity(n))).dot(G)).T  
+#     # U is a squared matrix       
+#     else: 
+#         return (inv(U).dot(G)).T
+
+# def get_error(G, U, L):
+#     '''||G-UL^T||^2
+#     '''
+#     return norm(G-U.dot(L.T), 2) ataset/rope/'
 #     add2 = run_num
 #     add3 = '/actions.npy'
 #     U = np.load(add1+add2+add3)
@@ -28,29 +50,56 @@ import torch
 #     return np.array(G[1:]) - np.array(G[:-1])
 
 
+# def get_control_matrix(G, U):
+#     '''Calculate control matrix 
+#     G: n * len(x_i)
+#     U: n * len(u_i)
+#     return control matrix L: len(x_i) * len(u_i) 
+#     '''
+#     n, d = np.shape(U)[0], np.shape(U)[1]
+#     # U is a thin matrix
+#     if n > d:
+#         eps = 1e-5
+#         return (pinv(U.T.dot(U)+eps*np.identity(d)).dot(U.T).dot(G)).T 
+#     # U is a fat matrix   
+#     elif n < d:
+#         eps = 1e-5
+#         return (U.T.dot(pinv(U.dot(U.T)+eps*np.identity(n))).dot(G)).T  
+#     # U is a squared matrix       
+#     else: 
+#         return (inv(U).dot(G)).T
+
+# def get_error(G, U, L):
+#     '''||G-UL^T||^2
+#     '''
+#     return norm(G-U.dot(L.T), 2) 
+
 def get_control_matrix(G, U):
     '''Calculate control matrix 
     G: n * len(x_i)
     U: n * len(u_i)
     return control matrix L: len(x_i) * len(u_i) 
     '''
-    n, d = np.shape(U)[0], np.shape(U)[1]
+    n, d = U.size()
     # U is a thin matrix
     if n > d:
         eps = 1e-5
-        return (pinv(U.T.dot(U)+eps*np.identity(d)).dot(U.T).dot(G)).T 
+        return (torch.inverse(U.t().mm(U) + eps*torch.eye(d).mm(U.t()).mm(G))).t()
+        #return (pinv(U.T.dot(U)+eps*np.identity(d)).dot(U.T).dot(G)).T 
     # U is a fat matrix   
     elif n < d:
         eps = 1e-5
-        return (U.T.dot(pinv(U.dot(U.T)+eps*np.identity(n))).dot(G)).T  
+        return (U.t().mm(torch.inverse(U.mm(U.t()) + eps*torch.eye(n))).mm(G)).t()  
+        #return (U.T.dot(pinv(U.dot(U.T)+eps*np.identity(n))).dot(G)).T  
     # U is a squared matrix       
     else: 
-        return (inv(U).dot(G)).T
+        return (torch.inverse(U).mm(G)).t()
+        # return (inv(U).dot(G)).T
 
 def get_error(G, U, L):
     '''||G-UL^T||^2
-    '''
-    return norm(G-U.dot(L.T), 2) 
+    ''' 
+    return torch.norm(G-U.mm(L.t()))
 
 def get_next_state(embedded_state, action, L):
     '''get next embedded state after certain steps

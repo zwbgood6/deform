@@ -8,82 +8,79 @@ from deform.model.hidden_dynamics import *
 from torchvision.utils import save_image
 import os
 
-class AE(nn.Module):    
-    def __init__(self):
-        super(AE, self).__init__()
-        self.fc1 = nn.Linear(2500, 250)
-        self.fc2 = nn.Linear(250, 10)
-        self.fc3 = nn.Linear(10, 250)
-        self.fc4 = nn.Linear(250, 2500)  
-
-    def encoder(self, x):
-        h1 = tanh(self.fc1(x)) # relu -> tanh for all relu's
-        return tanh(self.fc2(h1))
-
-    def decoder(self, g):
-        h2 = tanh(self.fc3(g))
-        return sigmoid(self.fc4(h2))   
-
-    def forward(self, x):
-        x = self.encoder(x.view(-1, 2500))
-        return self.decoder(x)  
-
 class CAE(nn.Module):
     def __init__(self, latent_state_dim=500, latent_act_dim=100):
         super(CAE, self).__init__()
         # state
-        self.conv_layers = nn.Sequential(nn.Conv2d(1, 8, 7, padding=0),
+        self.conv_layers = nn.Sequential(nn.Conv2d(1, 8, 3, padding=1), # 
                                          nn.ReLU(),
-                                         nn.MaxPool2d(7, stride=2),
-                                         nn.Conv2d(8, 16, 7, padding=0),
+                                         nn.MaxPool2d(3, stride=2),
+                                         nn.Conv2d(8, 16, 3, padding=1), # 
                                          nn.ReLU(),
-                                         nn.MaxPool2d(7, stride=2))
-        self.fc1 = nn.Linear(16*4*4, latent_state_dim)
-        self.fc2 = nn.Linear(latent_state_dim, 16*4*4)
-        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(16, 8, 7, stride=3, padding=0),
+                                         nn.MaxPool2d(3, stride=2),
+                                         nn.Conv2d(16, 32, 3, padding=1),
+                                         nn.ReLU(),
+                                         nn.MaxPool2d(3, stride=2),
+                                         nn.Conv2d(32, 64, 3, padding=1), # channel 1 32 64 64 
+                                         nn.ReLU(),
+                                         nn.MaxPool2d(3, stride=2))  # TODO: add conv relu conv relu max
+        self.fc1 = nn.Linear(64*2*2, latent_state_dim)
+        self.fc2 = nn.Linear(latent_state_dim, 64*2*2)
+        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(64, 32, 3, stride=3, padding=1),
                                           nn.ReLU(),
-                                          nn.ConvTranspose2d(8, 1, 5, stride=3, padding=0),
+                                          nn.ConvTranspose2d(32, 16, 3, stride=3, padding=1),
+                                          nn.ReLU(), 
+                                          nn.ConvTranspose2d(16, 8, 3, stride=3, padding=2),
+                                          nn.ReLU(),                                         
+                                          nn.ConvTranspose2d(8, 1, 2, stride=2, padding=1),
                                           nn.Sigmoid())
         # action
         self.fc5 = nn.Linear(5, 30)
         self.fc6 = nn.Linear(30, latent_act_dim) # TODO: add ConV, max pooling, and add layers
         self.fc7 = nn.Linear(latent_act_dim, 30) # 10-100
         self.fc8 = nn.Linear(30, 5)  
+        # control matrix
+        #self.control_matrix = nn.Parameter(torch.tensor(init_value, requires_grad=True)) # TODO: backpropagation this matrix
+        self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True))
 
     def encoder(self, x):
         x = self.conv_layers(x)
-        x = x.view(x.shape[0], -1)    
+        x = x.view(x.shape[0], -1) 
         return relu(self.fc1(x))
 
     def decoder(self, x):
         x = relu(self.fc2(x))
-        x = x.view(-1, 16, 4, 4) #(batch size, channel, H, W)
+        x = x.view(-1, 64, 2, 2) #(batch size, channel, H, W)
         return self.dconv_layers(x)
     
     def encoder_act(self, u):
-        h1 = relu(self.fc5(u)) # relu -> tanh for all relu's # TODO: relu
+        h1 = relu(self.fc5(u))
         return relu(self.fc6(h1))
 
     def decoder_act(self, u):
         h2 = relu(self.fc7(u))
         return sigmoid(self.fc8(h2))   
 
-    def forward(self, x, u):
-        x = self.encoder(x) 
-        u = self.encoder_act(u)               
-        return self.decoder(x), self.decoder_act(u)
+    def forward(self, x_pre, u, x_post):
+        x_pre = self.encoder(x_pre) 
+        u = self.encoder_act(u)  
+        x_post = self.encoder(x_post)     
+        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), self.control_matrix # TODO: change it / done
 
-def get_latent_U(U):
-    U_latent = []           
-    for u in U:
-        u = torch.from_numpy(u).to(device).float().view(-1, 5) 
-        u = model.encoder_act(u).detach().cpu().numpy()
-        U_latent.append(u)
-    n = np.shape(U)[0]        
-    d = np.array(U_latent).shape[2] 
-    return np.resize(np.array(U_latent), (n,d))
+
+# def get_latent_U(U):
+#     U_latent = []           
+#     for u in U:
+#         u = torch.from_numpy(u).to(device).float().view(-1, 5) 
+#         u = model.encoder_act(u).detach().cpu().numpy()
+#         U_latent.append(u)
+#     n = np.shape(U)[0]        
+#     d = np.array(U_latent).shape[2] 
+#     return np.resize(np.array(U_latent), (n,d))
 
 def predict(dataset, actions, L, step):
+    # original
+    model.eval()
     n = dataset.__len__()
     actions = get_latent_U(actions)
     with torch.no_grad():
@@ -96,7 +93,44 @@ def predict(dataset, actions, L, step):
             recon_data = model.decoder(torch.from_numpy(next_embedded_state).float().to(device))
             prediction = recon_data.view(1,50,50)
             save_image(prediction.cpu(), './result/{}/prediction_step{}/predict_{}.png'.format(folder_name, step, idx+step))
-
+    
+    # cope from test_new
+    model.eval()
+    test_loss = 0
+    with torch.no_grad():
+        for batch_idx, batch_data in enumerate(testloader):
+            # image before action
+            img_pre = batch_data['image_pre']
+            img_pre = img_pre.float().to(device).view(-1, 1, 50, 50)
+            # action
+            act = batch_data['action']
+            act = act.float().to(device).view(-1, 5)
+            # image after action
+            img_post = batch_data['image_post']
+            img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
+            # model
+            latent_img_pre, latent_act, latent_img_post, recon_img_pre, recon_act, L = model(img_pre, act, img_post)
+            # loss
+            loss_img = loss_function_img(recon_img_pre, img_pre)
+            loss_act = loss_function_act(recon_act, act)
+            loss_latent, _ = loss_function_latent(latent_img_pre, latent_img_post, latent_act, L, math=MATH)
+            loss = loss_img + loss_act + loss_latent
+            test_loss += loss.item()
+            if batch_idx == 0:
+                n = min(batch_data['image_pre'].size(0), 8)
+                comparison = torch.cat([batch_data['image_pre'][:n],
+                                      recon_img_pre.view(-1, 1, 50, 50).cpu()[:n]])
+                save_image(comparison.cpu(),
+                         './result/{}/reconstruction_test/reconstruct_epoch_'.format(folder_name) + str(epoch) + '.png', nrow=n)                                         
+        for batch_idx, batch_data in enumerate(trainloader):
+            if batch_idx == 0:
+                n = min(batch_data['image_pre'].size(0), 8)
+                comparison = torch.cat([batch_data['image_pre'][:n],
+                                      recon_img_pre.view(-1, 1, 50, 50).cpu()[:n]])
+                save_image(comparison.cpu(),
+                         './result/{}/reconstruction_train/reconstruct_epoch_'.format(folder_name) + str(epoch) + '.png', nrow=n)             
+    n = len(testloader.dataset)
+    return test_loss/n
 
 folder_name = 'test_new_CAE3'
 PATH = './result/{}/checkpoint'.format(folder_name)
