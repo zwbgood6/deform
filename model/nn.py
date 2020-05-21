@@ -154,12 +154,12 @@ def train_new(epoch):
         loss_img = loss_function_img(recon_img_pre, img_pre)
         loss_act = loss_function_act(recon_act, act)
         loss_latent, L = loss_function_latent(latent_img_pre, latent_img_post, latent_act, L_bp, math=MATH)
-        loss = loss_img + loss_act + loss_latent
+        loss = loss_img + GAMMA_act * loss_act + GAMMA_latent * loss_latent
         loss.backward()
         train_loss += loss.item()
         img_loss += loss_img.item()
-        act_loss += loss_act.item()
-        latent_loss += loss_latent.item()
+        act_loss += GAMMA_act * loss_act.item()
+        latent_loss += GAMMA_latent * loss_latent.item()
         optimizer.step()
         if batch_idx % 5 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -214,7 +214,7 @@ def test_new(epoch, L):
 # dataset
 print('***** Preparing Data *****')
 #run_num='run05'
-total_img_num = 1000#77944
+total_img_num = 77944
 train_num = int(total_img_num * 0.8)
 image_paths = create_image_path(total_img_num)
 # image_path = './rope_dataset/rope_all'
@@ -230,13 +230,15 @@ testloader = DataLoader(testset, batch_size=64,
 print('***** Finish Preparing Data *****')
 
 # train
-MATH = True # True: do math; False: do backpropagation
+MATH = False # True: do math; False: do backpropagation
+GAMMA_act = 100
+GAMMA_latent = 100
 print('***** Start Training & Testing *****')
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = CAE().to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-epochs = 10
-folder_name = 'test_new_train1'
+epochs = 500
+folder_name = 'test_new_train_scale_large'
 
 if not os.path.exists('./result/' + folder_name):
     os.makedirs('./result/' + folder_name)

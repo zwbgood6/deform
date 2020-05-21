@@ -84,15 +84,15 @@ def get_control_matrix(G, U):
     # U is a thin matrix
     if n > d:
         eps = 1e-5
-        return (torch.inverse(U.t().mm(U) + eps*torch.eye(d).to(device).mm(U.t()).mm(G)).to(device)).t()
+        return (torch.pinverse(U.t().mm(U) + eps*torch.eye(d).to(device).mm(U.t()).mm(G)).to(device)).t()
         #return (pinv(U.T.dot(U)+eps*np.identity(d)).dot(U.T).dot(G)).T 
     # U is a fat matrix   
     elif n < d:
         eps = 1e-5
-        return (U.t().mm(torch.inverse(U.mm(U.t()) + eps*torch.eye(n).to(device))).to(device).mm(G)).t()  
+        return (U.t().mm(torch.pinverse(U.mm(U.t()) + eps*torch.eye(n).to(device))).to(device).mm(G)).t()  
         #return (U.T.dot(pinv(U.dot(U.T)+eps*np.identity(n))).dot(G)).T  
     # U is a squared matrix       
-    else: 
+    else:
         return (torch.inverse(U).to(device).mm(G)).t()
         # return (inv(U).dot(G)).T
 

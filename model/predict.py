@@ -95,14 +95,15 @@ def predict(L):
             recon_img_post = model.decoder(recon_latent_img_post)
             if batch_idx % 10 == 0:
                 n = min(batch_data['image_pre'].size(0), 8)
-                comparison = torch.cat([batch_data['image_post'][:n],
-                                      recon_img_post.view(-1, 1, 50, 50).cpu()[:n]])
+                comparison = torch.cat([batch_data['image_pre'][:n],
+                                        batch_data['image_post'][:n],
+                                        recon_img_post.view(-1, 1, 50, 50).cpu()[:n]])
                 save_image(comparison.cpu(),
-                         './result/{}/prediction_step{}/prediction_batch{}.png'.format(folder_name, step, batch_idx), nrow=n)                                         
+                         './result/{}/prediction_full_step{}/prediction_batch{}.png'.format(folder_name, step, batch_idx), nrow=n)                                         
 
 
 print('***** Preparing Data *****')
-total_img_num = 1000#77944
+total_img_num = 77944
 image_paths = create_image_path(total_img_num)
 action_path = './rope_dataset/rope_all_resize_gray/resize_actions.npy'
 actions = np.load(action_path)
@@ -111,7 +112,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_new_train1'
+folder_name = 'test_new_train_scale'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -146,7 +147,7 @@ L = torch.tensor(L)
 # prediction
 print('***** Start Prediction *****')
 step=1
-if not os.path.exists('./result/{}/prediction_step{}'.format(folder_name, step)):
-    os.makedirs('./result/{}/prediction_step{}'.format(folder_name, step))
+if not os.path.exists('./result/{}/prediction_full_step{}'.format(folder_name, step)):
+    os.makedirs('./result/{}/prediction_full_step{}'.format(folder_name, step))
 predict(L)
 print('***** Finish Prediction *****')
