@@ -211,34 +211,56 @@ def test_new(epoch, L):
     n = len(testloader.dataset)
     return test_loss/n
 
+# args
+parser = argparse.ArgumentParser(description='CAE Rope Deform Example')
+parser.add_argument('--folder-name', default='test', 
+                    help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
+parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+                    help='input batch size for training (default: 64)')
+parser.add_argument('--epochs', type=int, default=5, metavar='N',
+                    help='number of epochs to train (default: 500)')
+parser.add_argument('--gamma-act', type=int, default=300, metavar='N',
+                    help='scale coefficient for loss of action (default: 300)')   
+parser.add_argument('--gamma-lat', type=int, default=100, metavar='N',
+                    help='scale coefficient for loss of latent dynamics (default: 100)')                                       
+parser.add_argument('--no-cuda', action='store_true', default=False,
+                    help='enables CUDA training')
+parser.add_argument('--math', default=False,
+                    help='get control matrix L: True - use regression, False - use backpropagation')                    
+parser.add_argument('--seed', type=int, default=1, metavar='S',
+                    help='random seed (default: 1)')
+parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+                    help='how many batches to wait before logging training status')
+args = parser.parse_args()
+args.cuda = not args.no_cuda and torch.cuda.is_available()
+torch.manual_seed(args.seed)
+
 # dataset
 print('***** Preparing Data *****')
-#run_num='run05'
-total_img_num = 77944
+total_img_num = 1000#77944
 train_num = int(total_img_num * 0.8)
 image_paths = create_image_path(total_img_num)
-# image_path = './rope_dataset/rope_all'
 action_path = './rope_dataset/rope_all_resize_gray/resize_actions.npy'
 actions = np.load(action_path)
 dataset = MyDataset(image_paths, actions)
 trainset = MyDataset(image_paths[0:train_num], actions[0:train_num])
 testset = MyDataset(image_paths[train_num:], actions[train_num:])
-trainloader = DataLoader(trainset, batch_size=64,
+trainloader = DataLoader(trainset, batch_size=args.batch_size,
                         shuffle=True, num_workers=4)
-testloader = DataLoader(testset, batch_size=64,
+testloader = DataLoader(testset, batch_size=args.batch_size,
                         shuffle=True, num_workers=4)                        
 print('***** Finish Preparing Data *****')
 
 # train
-MATH = False # True: do math; False: do backpropagation
-GAMMA_act = 100
-GAMMA_latent = 100
+MATH = args.math # True: do math; False: do backpropagation
+GAMMA_act = args.gamma_act
+GAMMA_latent = args.gamma_lat
 print('***** Start Training & Testing *****')
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if args.cuda else "cpu")
 model = CAE().to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-epochs = 500
-folder_name = 'test_new_train_scale_large'
+epochs = args.epochs
+folder_name = args.folder_name
 
 if not os.path.exists('./result/' + folder_name):
     os.makedirs('./result/' + folder_name)
@@ -264,7 +286,7 @@ for epoch in range(1, epochs+1):
     latent_loss_all.append(latent_loss)
     test_loss_all.append(test_loss)
 #train_loss, error = train(model, trainset, epochs, step=1)
-    if epoch % 1 == 0:
+    if epoch % args.log_interval == 0:
         np.save('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), train_loss_all)
         np.save('./result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs), img_loss_all)
         np.save('./result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs), act_loss_all)
@@ -311,8 +333,6 @@ torch.save({
             'loss': train_loss
             }, 
             PATH)
-
-
 
 print('***** End Program *****')            
 

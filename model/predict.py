@@ -112,7 +112,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_new_train_scale'
+folder_name = 'test_new_train_scale_large'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
