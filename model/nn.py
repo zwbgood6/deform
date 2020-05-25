@@ -172,13 +172,13 @@ def train_new(epoch):
             comparison = torch.cat([batch_data['image_bi_pre'][:n],
                                   recon_img_pre.view(-1, 1, 50, 50).cpu()[:n]]) 
             save_image(comparison.cpu(),
-                     './result/{}/reconstruction_train/reconstruct_epoch_'.format(folder_name) + str(epoch) + '.png', nrow=n)      
+                     './result/{}/reconstruction_train/reconstruct_epoch_{}.png'.format(folder_name, epoch), nrow=n)      
             recon_action = recon_act.view(-1, 5).detach().cpu().numpy()[:n].copy()
             recon_action[:,:2] = recon_action[:,:2] / 50 * 240
-            plot_sample(batch_data['image_ori_pre'][:n].detach().cpu().numpy(), 
-                        batch_data['image_ori_post'][:n].detach().cpu().numpy(), 
-                        batch_data['action'][:n].detach().cpu().numpy(), recon_action, 
-                        './result/{}/reconstruction_act/recon_epoch_{}.png'.format(folder_name, epoch))
+            plot_sample(batch_data['image_ori_pre'][:n].detach().cpu().numpy().copy(), 
+                        batch_data['image_ori_post'][:n].detach().cpu().numpy().copy(), 
+                        batch_data['action'][:n].detach().cpu().numpy().copy(), recon_action, 
+                        './result/{}/reconstruction_act_train/recon_epoch_{}.png'.format(folder_name, epoch))
     print('====> Epoch: {} Average loss: {:.4f}'.format(
           epoch, train_loss / len(trainloader.dataset)))
     n = len(trainloader.dataset)      
@@ -211,8 +211,13 @@ def test_new(epoch, L):
                 comparison = torch.cat([batch_data['image_bi_pre'][:n],
                                       recon_img_pre.view(-1, 1, 50, 50).cpu()[:n]])
                 save_image(comparison.cpu(),
-                         './result/{}/reconstruction_test/reconstruct_epoch_'.format(folder_name) + str(epoch) + '.png', nrow=n)                                         
-               
+                         './result/{}/reconstruction_test/reconstruct_epoch_{}.png'.format(folder_name, epoch), nrow=n)                                         
+                recon_action = recon_act.view(-1, 5).detach().cpu().numpy()[:n].copy()
+                recon_action[:,:2] = recon_action[:,:2] / 50 * 240
+                plot_sample(batch_data['image_ori_pre'][:n].detach().cpu().numpy().copy(), 
+                            batch_data['image_ori_post'][:n].detach().cpu().numpy().copy(), 
+                            batch_data['action'][:n].detach().cpu().numpy().copy(), recon_action, 
+                            './result/{}/reconstruction_act_test/recon_epoch_{}.png'.format(folder_name, epoch))               
     n = len(testloader.dataset)
     return test_loss/n
 
@@ -222,7 +227,7 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=500, metavar='N',
+parser.add_argument('--epochs', type=int, default=5, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=50, metavar='N',
                     help='scale coefficient for loss of action (default: 50)')   
@@ -242,7 +247,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 77944
+total_img_num = 1000#77944
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
 image_paths_ori = create_image_path('rope_all_ori', total_img_num)
@@ -278,8 +283,10 @@ if not os.path.exists('./result/' + folder_name + '/reconstruction_test'):
     os.makedirs('./result/' + folder_name + '/reconstruction_test')
 if not os.path.exists('./result/' + folder_name + '/reconstruction_train'):
     os.makedirs('./result/' + folder_name + '/reconstruction_train')
-if not os.path.exists('./result/' + folder_name + '/reconstruction_act'):
-    os.makedirs('./result/' + folder_name + '/reconstruction_act')
+if not os.path.exists('./result/' + folder_name + '/reconstruction_act_train'):
+    os.makedirs('./result/' + folder_name + '/reconstruction_act_train')
+if not os.path.exists('./result/' + folder_name + '/reconstruction_act_test'):
+    os.makedirs('./result/' + folder_name + '/reconstruction_act_test')
 
 train_loss_all = []
 img_loss_all = []
