@@ -2,6 +2,31 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
+def rect(poke, c):
+    # from rope.ipynb in Berkeley's rope dataset file
+    x, y, t, l, _ = poke
+    dx = -400 * l * math.cos(t)
+    dy = -400 * l * math.sin(t)
+    plt.arrow(x, y, dx, dy, head_width=5, head_length=5, color=c, alpha=0.5)
+
+def plot_sample(img_before, img_after, ori_action, recon_action, directory):
+    # from rope.ipynb in Berkeley's rope dataset file
+    plt.figure()
+    N = int(img_before.shape[0] / 2)
+    for i in range(N):
+        # upper row
+        plt.subplot(2, N, i+1)
+        rect(ori_action[i], "blue")
+        rect(recon_action[i], "red")
+        plt.imshow(img_before[i].copy())
+        plt.axis('off')
+        # lower row
+        plt.subplot(2, N, i+1+N)
+        plt.imshow(img_after[i].copy())
+        plt.axis('off')
+    plt.savefig(directory) 
+    plt.close()
+
 def generate_initial_points(x, y, num_points, link_length):
     """generate initial points for a line
     x: the first (start from left) point's x position

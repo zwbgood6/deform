@@ -14,8 +14,8 @@ for j in num_range:
         add2 = 'run{}'.format(j)
 
     # count number of images in each folder
-    add = 'cd ' + add1 + '/rope_seg/' + add2 + '; ls -1 | wc -l'
-    num_file = int(subprocess.check_output(add, shell=True)) #- 1  
+    add = 'cd ' + add1 + '/rope/' + add2 + '; ls -1 | wc -l'
+    num_file = int(subprocess.check_output(add, shell=True)) - 1  
 
     for i in range(num_file):
         if len(str(i)) == 1:
@@ -40,6 +40,6 @@ for j in num_range:
             add4 = '/img_{}.jpg'.format(count)                     
 
         # read image
-        img = cv2.imread(add1 + '/rope_seg/' + add2 + add3)
+        img = cv2.imread(add1 + '/rope/' + add2 + add3)
         # rename image
-        cv2.imwrite(add1 + '/rope_all/' + add4, img)
+        cv2.imwrite(add1 + '/rope_all_resize_ori/' + add4, img)

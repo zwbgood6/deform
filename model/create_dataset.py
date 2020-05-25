@@ -7,10 +7,13 @@ from torchvision import transforms
 from torch.utils.data import Dataset
 import numpy as np
 from PIL import Image
+import matplotlib.pyplot as plt
 
 class MyDataset(Dataset):
-    def __init__(self, image_paths, actions):
-        self.image_paths = image_paths
+    def __init__(self, image_paths_bi, image_paths_ori, resize_actions, actions):
+        self.image_paths_bi = image_paths_bi # binary mask
+        self.image_paths_ori = image_paths_ori # original
+        self.resz_actions = resize_actions
         self.actions = actions
 
     def __getitem__(self, index):
@@ -18,22 +21,35 @@ class MyDataset(Dataset):
         if index == n-1:
             index = index - 1
         # load images (pre-transform images)
-        image_pre = Image.open(self.image_paths[index])
-        image_post = Image.open(self.image_paths[index+1])
-        image_pre = self.transform_img(image_pre)
-        image_post = self.transform_img(image_post)
+        image_bi_pre = Image.open(self.image_paths_bi[index])
+        image_bi_post = Image.open(self.image_paths_bi[index+1])
+        image_bi_pre = self.transform_img(image_bi_pre)
+        image_bi_post = self.transform_img(image_bi_post)
+        image_ori_pre = plt.imread(self.image_paths_ori[index])
+        image_ori_post = plt.imread(self.image_paths_ori[index+1])
 
         # load action (pre-transform x, y positions in action)
         action = self.actions[index]
+        resz_action = self.resz_actions[index]
         #ratio = output_size / current_size
         #action = self.transform_act(action, ratio)
-        
-        # sample = {state, action, next_state}
-        sample = {'image_pre': image_pre, 'action': action, 'image_post': image_post}
+
+        '''
+        sample = {state, action, next_state, 
+                  state, action, next_state}
+        image_bi_pre: 50*50, binary mask image pre-action
+        resz_action: resized x,y in action
+        image_bi_post: 50*50, binary mask image post-action
+        image_ori_pre: 240*240, original image pre-action
+        action: original action
+        image_ori_post: 50*50, original image post-action        
+        '''
+        sample = {'image_bi_pre': image_bi_pre, 'resz_action': resz_action, 'image_bi_post': image_bi_post, 
+                'image_ori_pre': image_ori_pre, 'action': action, 'image_ori_post': image_ori_post}
         return sample
 
     def __len__(self):
-        return len(self.image_paths)
+        return len(self.image_paths_bi)
 
     def transform_img(self, image):
         #image = TF.to_grayscale(image)  # TODO: change image to grayscale before traning
@@ -50,11 +66,11 @@ class MyDataset(Dataset):
     #     return action
 
 
-def create_image_path(total_img_num):
+def create_image_path(folder, total_img_num):
     '''create image_path list as input of MyDataset
     total_img_num: number of images 
     '''
-    add1 = './rope_dataset/rope_all_resize_gray'
+    add1 = './rope_dataset/{}'.format(folder)
     image_paths = []
     for i in range(total_img_num):
         if len(str(i)) == 1:

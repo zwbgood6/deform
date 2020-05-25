@@ -81,22 +81,22 @@ def predict(L):
     with torch.no_grad():
         for batch_idx, batch_data in enumerate(dataloader):
             # image before action
-            img_pre = batch_data['image_pre']
+            img_pre = batch_data['image_bi_pre']
             img_pre = img_pre.float().to(device).view(-1, 1, 50, 50)
             # action
-            act = batch_data['action']
+            act = batch_data['resz_action']
             act = act.float().to(device).view(-1, 5)
             # image after action
-            img_post = batch_data['image_post']
+            img_post = batch_data['image_bi_post']
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # model
             latent_img_pre, latent_act, _, _, _, _ = model(img_pre, act, img_post)
             recon_latent_img_post = get_next_state(latent_img_pre, latent_act, L)
             recon_img_post = model.decoder(recon_latent_img_post)
             if batch_idx % 10 == 0:
-                n = min(batch_data['image_pre'].size(0), 8)
-                comparison = torch.cat([batch_data['image_pre'][:n],
-                                        batch_data['image_post'][:n],
+                n = min(batch_data['image_bi_pre'].size(0), 8)
+                comparison = torch.cat([batch_data['image_bi_pre'][:n],
+                                        batch_data['image_bi_post'][:n],
                                         recon_img_post.view(-1, 1, 50, 50).cpu()[:n]])
                 save_image(comparison.cpu(),
                          './result/{}/prediction_full_step{}/prediction_batch{}.png'.format(folder_name, step, batch_idx), nrow=n)                                         

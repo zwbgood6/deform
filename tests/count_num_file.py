@@ -12,7 +12,7 @@ for j in num_range:
     elif len(str(j)) == 2:
         add2 = 'run{}'.format(j)
 
-    add = 'cd ' + add1 + '/rope_seg/' + add2 + '; ls -1 | wc -l'
+    add = 'cd ' + add1 + '/rope_all/' + add2 + '; ls -1 | wc -l'
     num_file = int(subprocess.check_output(add, shell=True)) #- 1    
     list_file.append(num_file)
     total += num_file

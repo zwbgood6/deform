@@ -16,4 +16,4 @@ for i in range(3, 69):
     else:    
         actions_all = np.append(actions_all, actions, axis=0)
 
-np.save('/home/zwenbo/Documents/research/deform/rope_dataset/rope_all/actions.npy', actions_all)
+np.save('/home/zwenbo/Documents/research/deform/rope_dataset/rope_all_ori/actions.npy', actions_all)

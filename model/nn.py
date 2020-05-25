@@ -9,7 +9,7 @@ from torch.utils.data import Dataset, DataLoader
 from deform.model.create_dataset import *
 from deform.model.hidden_dynamics import *
 import matplotlib.pyplot as plt
-from deform.utils.utils import plot_train_loss, plot_test_loss, plot_latent_loss, plot_img_loss, plot_act_loss
+from deform.utils.utils import plot_train_loss, plot_test_loss, plot_latent_loss, plot_img_loss, plot_act_loss, plot_sample, rect
 import os
 
 class CAE(nn.Module):
@@ -138,13 +138,13 @@ def train_new(epoch):
     latent_loss = 0
     for batch_idx, batch_data in enumerate(trainloader):
         # image before action
-        img_pre = batch_data['image_pre']
+        img_pre = batch_data['image_bi_pre']
         img_pre = img_pre.float().to(device).view(-1, 1, 50, 50)
         # action
-        act = batch_data['action']
+        act = batch_data['resz_action']
         act = act.float().to(device).view(-1, 5)
         # image after action
-        img_post = batch_data['image_post']
+        img_post = batch_data['image_bi_post']
         img_post = img_post.float().to(device).view(-1, 1, 50, 50)        
         # optimization
         optimizer.zero_grad()
@@ -163,17 +163,22 @@ def train_new(epoch):
         optimizer.step()
         if batch_idx % 5 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(batch_data['image_pre']), len(trainloader.dataset),
+                epoch, batch_idx * len(batch_data['image_bi_pre']), len(trainloader.dataset),
                 100. * batch_idx / len(trainloader),
-                loss.item() / len(batch_data['image_pre'])))    
+                loss.item() / len(batch_data['image_bi_pre'])))    
         # reconstruction
         if batch_idx == 0:
-            n = min(batch_data['image_pre'].size(0), 8)
-            comparison = torch.cat([batch_data['image_pre'][:n],
+            n = min(batch_data['image_bi_pre'].size(0), 8)
+            comparison = torch.cat([batch_data['image_bi_pre'][:n],
                                   recon_img_pre.view(-1, 1, 50, 50).cpu()[:n]]) 
             save_image(comparison.cpu(),
                      './result/{}/reconstruction_train/reconstruct_epoch_'.format(folder_name) + str(epoch) + '.png', nrow=n)      
-
+            recon_action = recon_act.view(-1, 5).detach().cpu().numpy()[:n].copy()
+            recon_action[:,:2] = recon_action[:,:2] / 50 * 240
+            plot_sample(batch_data['image_ori_pre'][:n].detach().cpu().numpy(), 
+                        batch_data['image_ori_post'][:n].detach().cpu().numpy(), 
+                        batch_data['action'][:n].detach().cpu().numpy(), recon_action, 
+                        './result/{}/reconstruction_act/recon_epoch_{}.png'.format(folder_name, epoch))
     print('====> Epoch: {} Average loss: {:.4f}'.format(
           epoch, train_loss / len(trainloader.dataset)))
     n = len(trainloader.dataset)      
@@ -185,13 +190,13 @@ def test_new(epoch, L):
     with torch.no_grad():
         for batch_idx, batch_data in enumerate(testloader):
             # image before action
-            img_pre = batch_data['image_pre']
+            img_pre = batch_data['image_bi_pre']
             img_pre = img_pre.float().to(device).view(-1, 1, 50, 50)
             # action
-            act = batch_data['action']
+            act = batch_data['resz_action']
             act = act.float().to(device).view(-1, 5)
             # image after action
-            img_post = batch_data['image_post']
+            img_post = batch_data['image_bi_post']
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # model
             latent_img_pre, latent_act, latent_img_post, recon_img_pre, recon_act, _ = model(img_pre, act, img_post)
@@ -202,8 +207,8 @@ def test_new(epoch, L):
             loss = loss_img + loss_act + loss_latent
             test_loss += loss.item()
             if batch_idx == 0:
-                n = min(batch_data['image_pre'].size(0), 8)
-                comparison = torch.cat([batch_data['image_pre'][:n],
+                n = min(batch_data['image_bi_pre'].size(0), 8)
+                comparison = torch.cat([batch_data['image_bi_pre'][:n],
                                       recon_img_pre.view(-1, 1, 50, 50).cpu()[:n]])
                 save_image(comparison.cpu(),
                          './result/{}/reconstruction_test/reconstruct_epoch_'.format(folder_name) + str(epoch) + '.png', nrow=n)                                         
@@ -217,12 +222,12 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=5, metavar='N',
+parser.add_argument('--epochs', type=int, default=500, metavar='N',
                     help='number of epochs to train (default: 500)')
-parser.add_argument('--gamma-act', type=int, default=300, metavar='N',
-                    help='scale coefficient for loss of action (default: 300)')   
-parser.add_argument('--gamma-lat', type=int, default=100, metavar='N',
-                    help='scale coefficient for loss of latent dynamics (default: 100)')                                       
+parser.add_argument('--gamma-act', type=int, default=50, metavar='N',
+                    help='scale coefficient for loss of action (default: 50)')   
+parser.add_argument('--gamma-lat', type=int, default=150, metavar='N',
+                    help='scale coefficient for loss of latent dynamics (default: 150)')                                       
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
 parser.add_argument('--math', default=False,
@@ -237,22 +242,25 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 1000#77944
+total_img_num = 77944
 train_num = int(total_img_num * 0.8)
-image_paths = create_image_path(total_img_num)
-action_path = './rope_dataset/rope_all_resize_gray/resize_actions.npy'
-actions = np.load(action_path)
-dataset = MyDataset(image_paths, actions)
-trainset = MyDataset(image_paths[0:train_num], actions[0:train_num])
-testset = MyDataset(image_paths[train_num:], actions[train_num:])
+image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
+image_paths_ori = create_image_path('rope_all_ori', total_img_num)
+resz_act_path = './rope_dataset/rope_all_resize_gray/resize_actions.npy'
+ori_act_path = './rope_dataset/rope_all_ori/actions.npy'
+resz_act = np.load(resz_act_path)
+ori_act = np.load(ori_act_path)
+dataset = MyDataset(image_paths_bi, image_paths_ori, resz_act, ori_act)
+trainset = MyDataset(image_paths_bi[0:train_num], image_paths_ori[0:train_num], resz_act[0:train_num], ori_act[0:train_num])
+testset = MyDataset(image_paths_bi[train_num:], image_paths_ori[train_num:], resz_act[train_num:], ori_act[train_num:])
 trainloader = DataLoader(trainset, batch_size=args.batch_size,
                         shuffle=True, num_workers=4)
 testloader = DataLoader(testset, batch_size=args.batch_size,
                         shuffle=True, num_workers=4)                        
 print('***** Finish Preparing Data *****')
 
-# train
-MATH = args.math # True: do math; False: do backpropagation
+# train var
+MATH = args.math # True: use regression; False: use backpropagation
 GAMMA_act = args.gamma_act
 GAMMA_latent = args.gamma_lat
 print('***** Start Training & Testing *****')
@@ -270,6 +278,8 @@ if not os.path.exists('./result/' + folder_name + '/reconstruction_test'):
     os.makedirs('./result/' + folder_name + '/reconstruction_test')
 if not os.path.exists('./result/' + folder_name + '/reconstruction_train'):
     os.makedirs('./result/' + folder_name + '/reconstruction_train')
+if not os.path.exists('./result/' + folder_name + '/reconstruction_act'):
+    os.makedirs('./result/' + folder_name + '/reconstruction_act')
 
 train_loss_all = []
 img_loss_all = []
@@ -285,7 +295,6 @@ for epoch in range(1, epochs+1):
     act_loss_all.append(act_loss)
     latent_loss_all.append(latent_loss)
     test_loss_all.append(test_loss)
-#train_loss, error = train(model, trainset, epochs, step=1)
     if epoch % args.log_interval == 0:
         np.save('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), train_loss_all)
         np.save('./result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs), img_loss_all)
@@ -311,10 +320,7 @@ np.save('./result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs), laten
 np.save('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), test_loss_all)
 L_d = L.detach().cpu().numpy()
 np.save('./result/{}/control_matrix.npy'.format(folder_name), L_d)
-# test
-# print('***** Start Testing *****')
-# test_loss = test(dataset) # TODO: get reconstruction for trainset
-# np.save('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), test_loss)
+
 
 # plot
 plot_train_loss('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
@@ -322,7 +328,6 @@ plot_test_loss('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), 
 plot_img_loss('./result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
 plot_act_loss('./result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
 plot_latent_loss('./result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-#plot_error('./result/{}/error_epoch{}.npy'.format(folder_name, epochs), folder_name)
 
 # save checkpoint
 PATH = './result/{}/checkpoint'.format(folder_name)
