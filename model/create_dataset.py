@@ -8,23 +8,30 @@ from torch.utils.data import Dataset
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+import torch
 
 class MyDataset(Dataset):
-    def __init__(self, image_paths_bi, resize_actions):
+    def __init__(self, image_paths_bi, resize_actions, transform=False):
         self.image_paths_bi = image_paths_bi # binary mask
         #self.image_paths_ori = image_paths_ori # original
         self.resz_actions = resize_actions
         #self.actions = actions
+        self.transform = transform
 
     def __getitem__(self, index):
         n = self.__len__()
         if index == n-1:
             index = index - 1
+
+
+        trans = None  
+        if self.transform:
+            trans = list(4 * np.random.random((2,)) - 2) #[-2,2]
         # load images (pre-transform images)
         image_bi_pre = Image.open(self.image_paths_bi[index])
         image_bi_post = Image.open(self.image_paths_bi[index+1])
-        image_bi_pre = self.transform_img(image_bi_pre)
-        image_bi_post = self.transform_img(image_bi_post)
+        image_bi_pre = self.transform_img(image_bi_pre, trans)
+        image_bi_post = self.transform_img(image_bi_post, trans)
         #image_ori_pre = plt.imread(self.image_paths_ori[index])
         #image_ori_post = plt.imread(self.image_paths_ori[index+1])
 
@@ -33,6 +40,7 @@ class MyDataset(Dataset):
         resz_action = self.resz_actions[index]
         #ratio = output_size / current_size
         #action = self.transform_act(action, ratio)
+        resz_action = self.transform_act(resz_action, trans)
 
         '''
         sample = {state, action, next_state, 
@@ -47,24 +55,28 @@ class MyDataset(Dataset):
         # sample = {'image_bi_pre': image_bi_pre, 'resz_action': resz_action, 'image_bi_post': image_bi_post, 
         #         'image_ori_pre': image_ori_pre, 'action': action, 'image_ori_post': image_ori_post}
         sample = {'image_bi_pre': image_bi_pre, 'image_bi_post': image_bi_post, 'resz_action': resz_action}       
+
         return sample
 
     def __len__(self):
         return len(self.image_paths_bi)
 
-    def transform_img(self, image):
+    def transform_img(self, image, trans):
         #image = TF.to_grayscale(image)  # TODO: change image to grayscale before traning
         #resize = transforms.Resize(size=(output_size, output_size)) # TODO: resize image before traning
         #image = resize(image)        
         image = TF.to_tensor(image) # pixel value range [0,1]
+        if self.transform:
+            image = TF.affine(image, angle=0, translate=trans, scale=0.0, shear=0.0)
         # binarize image
         image = image > 0.3
         image = image.float()
         return image
 
-    # def transform_act(self, action, ratio):
-    #     action[:2] = action[:2] * ratio
-    #     return action
+    def transform_act(self, action, trans):
+        if trans != None:
+            action[:2] = action[:2] * np.array(trans)
+        return action
 
 
 def create_image_path(folder, total_img_num):

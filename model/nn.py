@@ -93,7 +93,12 @@ def loss_function_act(recon_act, act):
     # recon_act = torch.div(recon_act.view(-1, 5)[:,:4], torch.tensor([50, 50, 2*math.pi, 0.14])) + torch.tensor([0,0,0,-1/14])
     # act = torch.div(act.view(-1, 5)[:,:4], torch.tensor([50, 50, 2*math.pi, 0.14])) + torch.tensor([0,0,0,-1/14])
     # return F.mse_loss(recon_act, act, reduction='sum')
-    return F.mse_loss(recon_act.view(-1, 5), act.view(-1, 5), reduction='sum')
+    # with norm
+    return F.mse_loss((torch.div(recon_act.view(-1, 5), torch.tensor([50, 50, 2*math.pi, 0.14, 1])) + torch.tensor([0,0,0,-1/14,0])), 
+                      (torch.div(act.view(-1, 5), torch.tensor([50, 50, 2*math.pi, 0.14, 1])) + torch.tensor([0,0,0,-1/14,0])), 
+                      reduction='sum')
+    # without norm
+    #return F.mse_loss(recon_act.view(-1, 5), act.view(-1, 5), reduction='sum')
 
 # def loss_function_latent(image_pre, image_post, action):
 #     G = get_G(image_pre, image_post)
@@ -249,7 +254,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 1000#77944
+total_img_num = 2000#77944
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)

@@ -58,7 +58,7 @@ class CAE(nn.Module):
 
     def decoder_act(self, u):
         h2 = relu(self.fc7(u))
-        return sigmoid(self.fc8(h2))   
+        return relu(self.fc8(h2))   # TODO: scale the element value
 
     def forward(self, x_pre, u, x_post):
         x_pre = self.encoder(x_pre) 
@@ -104,15 +104,15 @@ def predict(L):
 
 print('***** Preparing Data *****')
 total_img_num = 77944
-image_paths = create_image_path(total_img_num)
+image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
 action_path = './rope_dataset/rope_all_resize_gray/resize_actions.npy'
 actions = np.load(action_path)
-dataset = MyDataset(image_paths, actions)   
+dataset = MyDataset(image_paths_bi, actions)   
 dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_new_train_scale_large'
+folder_name = 'test_loss_act'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
