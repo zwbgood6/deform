@@ -225,7 +225,7 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=100, metavar='N',
+parser.add_argument('--epochs', type=int, default=50, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=150, metavar='N',
                     help='scale coefficient for loss of action (default: 150)')   
@@ -245,7 +245,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 10000#77944
+total_img_num = 2000#77944
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)

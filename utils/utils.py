@@ -222,14 +222,14 @@ def plot_all_loss(train, test, img, act, latent, folder_name):
     plt.savefig('./result/{}/plot/all_loss.png'.format(folder_name))
     plt.close()
 
-epochs = 500
-folder_name = 'test_new_train_scale_large'
-train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
-test = './result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs)
-img = './result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs)
-act = './result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs)
-latent = './result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs)
-plot_all_loss(train, test, img, act, latent, folder_name)
+# epochs = 500
+# folder_name = 'test_new_train_scale_large'
+# train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
+# test = './result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs)
+# img = './result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs)
+# act = './result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs)
+# latent = './result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs)
+# plot_all_loss(train, test, img, act, latent, folder_name)
 
 # plot_test_loss('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
 # plot_img_loss('./result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
