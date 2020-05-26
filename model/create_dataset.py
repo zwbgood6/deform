@@ -10,11 +10,11 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 class MyDataset(Dataset):
-    def __init__(self, image_paths_bi, image_paths_ori, resize_actions, actions):
+    def __init__(self, image_paths_bi, resize_actions):
         self.image_paths_bi = image_paths_bi # binary mask
-        self.image_paths_ori = image_paths_ori # original
+        #self.image_paths_ori = image_paths_ori # original
         self.resz_actions = resize_actions
-        self.actions = actions
+        #self.actions = actions
 
     def __getitem__(self, index):
         n = self.__len__()
@@ -25,11 +25,11 @@ class MyDataset(Dataset):
         image_bi_post = Image.open(self.image_paths_bi[index+1])
         image_bi_pre = self.transform_img(image_bi_pre)
         image_bi_post = self.transform_img(image_bi_post)
-        image_ori_pre = plt.imread(self.image_paths_ori[index])
-        image_ori_post = plt.imread(self.image_paths_ori[index+1])
+        #image_ori_pre = plt.imread(self.image_paths_ori[index])
+        #image_ori_post = plt.imread(self.image_paths_ori[index+1])
 
         # load action (pre-transform x, y positions in action)
-        action = self.actions[index]
+        #action = self.actions[index]
         resz_action = self.resz_actions[index]
         #ratio = output_size / current_size
         #action = self.transform_act(action, ratio)
@@ -44,8 +44,9 @@ class MyDataset(Dataset):
         action: original action
         image_ori_post: 50*50, original image post-action        
         '''
-        sample = {'image_bi_pre': image_bi_pre, 'resz_action': resz_action, 'image_bi_post': image_bi_post, 
-                'image_ori_pre': image_ori_pre, 'action': action, 'image_ori_post': image_ori_post}
+        # sample = {'image_bi_pre': image_bi_pre, 'resz_action': resz_action, 'image_bi_post': image_bi_post, 
+        #         'image_ori_pre': image_ori_pre, 'action': action, 'image_ori_post': image_ori_post}
+        sample = {'image_bi_pre': image_bi_pre, 'image_bi_post': image_bi_post, 'resz_action': resz_action}       
         return sample
 
     def __len__(self):

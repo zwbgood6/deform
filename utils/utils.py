@@ -9,28 +9,21 @@ def rect(poke, c):
     dy = -400 * l * math.sin(t)
     plt.arrow(x, y, dx, dy, head_width=5, head_length=5, color=c, alpha=0.5)
 
-def plot_sample(img_before, img_after, ori_action, recon_action, directory):
+def plot_sample(img_before, img_after, resz_action, recon_action, directory):
     # from rope.ipynb in Berkeley's rope dataset file
-    ax = plt.figure()
-    N = int(img_before.shape[0] / 2)
+    plt.figure()
+    N = int(img_before.shape[0])
     for i in range(N):
-        # upper row
+        # upper row original
         plt.subplot(2, N, i+1)
-        rect(ori_action[i], "blue")
-        rect(recon_action[i], "black")
-        plt.imshow(img_before[i])
+        rect(resz_action[i], "blue")
+        plt.imshow(img_before[i].reshape((50,50)))
+        plt.axis('off') 
+        # lower row reconstruction
+        plt.subplot(2, N, i+1+N)
+        rect(recon_action[i], "red")
+        plt.imshow(img_before[i].reshape(50,50))
         plt.axis('off')
-        # plt.subplots_adjust(hspace=0.1, wspace=0.1)
-        # ax.set_xticklabels([])
-        # ax.set_yticklabels([])  
-        # lower row
-        ax = plt.subplot(2, N, i+1+N)
-        plt.imshow(img_after[i])
-        plt.axis('off')
-        # plt.subplots_adjust(hspace=0.1, wspace=0.1)
-        # ax.set_xticklabels([])
-        # ax.set_yticklabels([])        
-    #plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, hspace=0.1, wspace=0.1)  
     plt.savefig(directory) 
     plt.close()
 
