@@ -22,7 +22,7 @@ def plot_sample(img_before, img_after, resz_action, recon_action, directory):
         # lower row reconstruction
         plt.subplot(2, N, i+1+N)
         rect(recon_action[i], "red")
-        plt.imshow(img_before[i].reshape(50,50))
+        plt.imshow(img_before[i].reshape((50,50)))
         plt.axis('off')
     plt.savefig(directory) 
     plt.close()
@@ -222,8 +222,8 @@ def plot_all_loss(train, test, img, act, latent, folder_name):
     plt.savefig('./result/{}/plot/all_loss.png'.format(folder_name))
     plt.close()
 
-# epochs = 500
-# folder_name = 'test_new_train_scale_large'
+# epochs = 5
+# folder_name = 'test'
 # train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
 # test = './result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs)
 # img = './result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs)

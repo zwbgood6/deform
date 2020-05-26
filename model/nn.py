@@ -11,6 +11,7 @@ from deform.model.hidden_dynamics import *
 import matplotlib.pyplot as plt
 from deform.utils.utils import plot_train_loss, plot_test_loss, plot_latent_loss, plot_img_loss, plot_act_loss, plot_sample, rect
 import os
+import math
 
 class CAE(nn.Module):
     def __init__(self, latent_state_dim=500, latent_act_dim=100):
@@ -61,7 +62,7 @@ class CAE(nn.Module):
 
     def decoder_act(self, u):
         h2 = relu(self.fc7(u))
-        return sigmoid(self.fc8(h2))   
+        return relu(self.fc8(h2))   
 
     def forward(self, x_pre, u, x_post):
         x_pre = self.encoder(x_pre) 
@@ -89,7 +90,10 @@ def loss_function_img(recon_img, img):
     return F.binary_cross_entropy(recon_img.view(-1, 2500), img.view(-1, 2500), reduction='sum')
 
 def loss_function_act(recon_act, act):
-    return F.mse_loss(recon_act.view(-1, 5), act.view(-1, 5))
+    # recon_act = torch.div(recon_act.view(-1, 5)[:,:4], torch.tensor([50, 50, 2*math.pi, 0.14])) + torch.tensor([0,0,0,-1/14])
+    # act = torch.div(act.view(-1, 5)[:,:4], torch.tensor([50, 50, 2*math.pi, 0.14])) + torch.tensor([0,0,0,-1/14])
+    # return F.mse_loss(recon_act, act, reduction='sum')
+    return F.mse_loss(recon_act.view(-1, 5), act.view(-1, 5), reduction='sum')
 
 # def loss_function_latent(image_pre, image_post, action):
 #     G = get_G(image_pre, image_post)
@@ -215,7 +219,7 @@ def test_new(epoch, L):
                             batch_data['image_bi_post'][:n].detach().cpu().numpy(), 
                             batch_data['resz_action'][:n].detach().cpu().numpy(), 
                             recon_act.view(-1, 5)[:n].detach().cpu().numpy(), 
-                            './result/{}/reconstruction_act_test/recon_epoch_{}.png'.format(folder_name, epoch))               
+                            './result/{}/reconstruction_act_test/recon_epoch_{}.png'.format(folder_name, epoch))                           
     n = len(testloader.dataset)
     return test_loss/n
 
@@ -225,7 +229,7 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=50, metavar='N',
+parser.add_argument('--epochs', type=int, default=5, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=150, metavar='N',
                     help='scale coefficient for loss of action (default: 150)')   
@@ -245,7 +249,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 2000#77944
+total_img_num = 1000#77944
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
