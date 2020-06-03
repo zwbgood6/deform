@@ -23,8 +23,8 @@ class CAE(nn.Module):
                                          nn.ReLU(),
                                          nn.Conv2d(64, 64, 3, padding=1), # channel 1 32 64 64; the next batch size should be larger than 8, 4 corner features + 4 direction features
                                          nn.ReLU(),
-                                         nn.MaxPool2d(3, stride=2))  # TODO: add conv relu conv relu max
-        self.fc1 = nn.Linear(64*5*5, latent_state_dim) # TODO: 64*2*2 > latent_state_dim
+                                         nn.MaxPool2d(3, stride=2))  
+        self.fc1 = nn.Linear(64*5*5, latent_state_dim) # size: 64*5*5 > latent_state_dim
         self.fc2 = nn.Linear(latent_state_dim, 64*5*5)
         self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(64, 64, 3, stride=2, padding=2),
                                           nn.ReLU(),
@@ -41,6 +41,10 @@ class CAE(nn.Module):
         self.fc8 = nn.Linear(30, 4)  
         # control matrix
         self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True)) # TODO: okay for random initializaion?
+        # multiplication/additive to action
+        # add these in order to use GPU for parameters
+        self.mul_tensor = torch.tensor([50, 50, 2*math.pi, 0.14]) 
+        self.add_tensor = torch.tensor([0, 0, 0, 0.01]) 
 
     def encoder(self, x):
         x = self.conv_layers(x)
@@ -58,7 +62,7 @@ class CAE(nn.Module):
 
     def decoder_act(self, u):
         h2 = relu(self.fc7(u))
-        return torch.mul(sigmoid(self.fc8(h2)), torch.tensor([50, 50, 2*math.pi, 0.14])) + torch.tensor([0, 0, 0, 0.01])   
+        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor) + self.add_tensor 
 
     def forward(self, x_pre, u, x_post):
         x_pre = self.encoder(x_pre) 
