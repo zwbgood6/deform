@@ -8,7 +8,7 @@ from deform.model.create_dataset import *
 from deform.model.hidden_dynamics import *
 from torchvision.utils import save_image
 import os
-
+import math
 class CAE(nn.Module):
     def __init__(self, latent_state_dim=500, latent_act_dim=100):
         super(CAE, self).__init__()
@@ -35,10 +35,10 @@ class CAE(nn.Module):
                                           nn.ConvTranspose2d(32, 1, 2, stride=2, padding=0),
                                           nn.Sigmoid())
         # action
-        self.fc5 = nn.Linear(5, 30)
+        self.fc5 = nn.Linear(4, 30)
         self.fc6 = nn.Linear(30, latent_act_dim) 
         self.fc7 = nn.Linear(latent_act_dim, 30) # 10-100
-        self.fc8 = nn.Linear(30, 5)  
+        self.fc8 = nn.Linear(30, 4)  
         # control matrix
         self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True)) # TODO: okay for random initializaion?
 
@@ -58,7 +58,7 @@ class CAE(nn.Module):
 
     def decoder_act(self, u):
         h2 = relu(self.fc7(u))
-        return relu(self.fc8(h2))   # TODO: scale the element value
+        return torch.mul(sigmoid(self.fc8(h2)), torch.tensor([50, 50, 2*math.pi, 0.14])) + torch.tensor([0, 0, 0, 0.01])   
 
     def forward(self, x_pre, u, x_post):
         x_pre = self.encoder(x_pre) 
@@ -85,7 +85,7 @@ def predict(L):
             img_pre = img_pre.float().to(device).view(-1, 1, 50, 50)
             # action
             act = batch_data['resz_action']
-            act = act.float().to(device).view(-1, 5)
+            act = act.float().to(device).view(-1, 4)
             # image after action
             img_post = batch_data['image_bi_post']
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
@@ -109,10 +109,10 @@ action_path = './rope_dataset/rope_all_resize_gray/resize_actions.npy'
 actions = np.load(action_path)
 dataset = MyDataset(image_paths_bi, actions)   
 dataloader = DataLoader(dataset, batch_size=64,
-                        shuffle=True, num_workers=4)                                             
+                        shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_loss_act'
+folder_name = 'test'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 def rect(poke, c):
     # from rope.ipynb in Berkeley's rope dataset file
-    x, y, t, l, _ = poke
+    x, y, t, l = poke
     dx = -400 * l * math.cos(t)
     dy = -400 * l * math.sin(t)
     plt.arrow(x, y, dx, dy, head_width=5, head_length=5, color=c, alpha=0.5)

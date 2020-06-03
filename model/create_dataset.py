@@ -1,7 +1,3 @@
-'''
-learn from https://discuss.pytorch.org/t/torchvision-transfors-how-to-perform-identical-transform-on-both-image-and-target/10606/5
-'''
-
 import torchvision.transforms.functional as TF
 from torchvision import transforms
 from torch.utils.data import Dataset
@@ -9,8 +5,12 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 import torch
+from torch.utils.data.dataloader import default_collate
 
 class MyDataset(Dataset):
+    '''
+    learn from https://discuss.pytorch.org/t/torchvision-transfors-how-to-perform-identical-transform-on-both-image-and-target/10606/5
+    '''    
     def __init__(self, image_paths_bi, resize_actions, transform=False):
         self.image_paths_bi = image_paths_bi # binary mask
         #self.image_paths_ori = image_paths_ori # original
@@ -19,14 +19,29 @@ class MyDataset(Dataset):
         self.transform = transform
 
     def __getitem__(self, index):
+        # try:
+        #     return super(MyDataset, self).__getitem__(index)
+        # except Exception as e:
+        #     print(e)    
         n = self.__len__()
         if index == n-1:
             index = index - 1
 
+        # load action 
+        resz_action = self.resz_actions[index]
+        # decide if action is valid
+        if resz_action[4] == 0:
+            return {'image_bi_pre': None, 'image_bi_post': None, 'resz_action': None}
 
+        # random transformation in [-2,2]
         trans = None  
         if self.transform:
             trans = list(4 * np.random.random((2,)) - 2) #[-2,2]
+
+        # transform action
+        resz_action = self.transform_act(resz_action, trans)
+
+
         # load images (pre-transform images)
         image_bi_pre = Image.open(self.image_paths_bi[index])
         image_bi_post = Image.open(self.image_paths_bi[index+1])
@@ -34,13 +49,6 @@ class MyDataset(Dataset):
         image_bi_post = self.transform_img(image_bi_post, trans)
         #image_ori_pre = plt.imread(self.image_paths_ori[index])
         #image_ori_post = plt.imread(self.image_paths_ori[index+1])
-
-        # load action (pre-transform x, y positions in action)
-        #action = self.actions[index]
-        resz_action = self.resz_actions[index]
-        #ratio = output_size / current_size
-        #action = self.transform_act(action, ratio)
-        resz_action = self.transform_act(resz_action, trans)
 
         '''
         sample = {state, action, next_state, 
@@ -74,10 +82,18 @@ class MyDataset(Dataset):
         return image
 
     def transform_act(self, action, trans):
-        if trans != None:
+        # transform based on trans
+        if self.transform:
             action[:2] = action[:2] * np.array(trans)
-        return action
+        # get first four elements in the action
+        return action[:4]
 
+def my_collate(batch):
+    '''filer out the data when sample['image_bi_post']=None, which means action's last element is zero
+    from https://discuss.pytorch.org/t/questions-about-dataloader-and-dataset/806/8
+    '''
+    batch = list(filter(lambda x: x['image_bi_post'] is not None, batch))
+    return default_collate(batch)
 
 def create_image_path(folder, total_img_num):
     '''create image_path list as input of MyDataset
