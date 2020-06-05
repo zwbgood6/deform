@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 def rect(poke, c):
     # from rope.ipynb in Berkeley's rope dataset file
     x, y, t, l = poke
-    dx = -400 * l * math.cos(t)
-    dy = -400 * l * math.sin(t)
+    dx = -200 * l * math.cos(t)
+    dy = -200 * l * math.sin(t)
     plt.arrow(x, y, dx, dy, head_width=5, head_length=5, color=c, alpha=0.5)
 
 def plot_sample(img_before, img_after, resz_action, recon_action, directory):
@@ -204,11 +204,11 @@ def plot_latent_loss(file_name, folder_name):
     plt.close()
 
 def plot_all_loss(train, test, img, act, latent, folder_name):
-    train_loss = np.load(train)
-    test_loss = np.load(test)
-    img_loss = np.load(img)
-    act_loss = np.load(act)
-    latent_loss = np.load(latent)
+    train_loss = np.load(train)[10:]
+    test_loss = np.load(test)[10:]
+    img_loss = np.load(img)[10:]
+    act_loss = np.load(act)[10:]
+    latent_loss = np.load(latent)[10:]
     plt.figure()
     train_curve, = plt.plot(train_loss, label='Train')
     test_curve, = plt.plot(test_loss, label='Test')
@@ -222,14 +222,14 @@ def plot_all_loss(train, test, img, act, latent, folder_name):
     plt.savefig('./result/{}/plot/all_loss.png'.format(folder_name))
     plt.close()
 
-# epochs = 5
-# folder_name = 'test'
-# train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
-# test = './result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs)
-# img = './result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs)
-# act = './result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs)
-# latent = './result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs)
-# plot_all_loss(train, test, img, act, latent, folder_name)
+epochs = 500
+folder_name = 'test1'
+train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
+test = './result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs)
+img = './result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs)
+act = './result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs)
+latent = './result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs)
+plot_all_loss(train, test, img, act, latent, folder_name)
 
 # plot_test_loss('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
 # plot_img_loss('./result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)

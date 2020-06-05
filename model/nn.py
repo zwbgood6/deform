@@ -66,7 +66,7 @@ class CAE(nn.Module):
 
     def decoder_act(self, u):
         h2 = relu(self.fc7(u))
-        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor) + self.add_tensor 
+        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
 
     def forward(self, x_pre, u, x_post):
         x_pre = self.encoder(x_pre) 
@@ -112,11 +112,16 @@ def loss_function_act(recon_act, act):
 #     loss_latent = get_error(G, U, L)
 #     return loss_latent
 
-def loss_function_latent(latent_img_pre, latent_img_post, latent_action, L, math=True):
+def loss_function_latent(latent_img_pre, latent_img_post, latent_action, L, math=False):
     G = latent_img_post - latent_img_pre
     if math:
         L = get_control_matrix(G, latent_action)
     return get_error(G, latent_action, L), L
+
+def loss_function_pred(img_post, latent_img_pre, latent_act, L):
+    recon_latent_img_post = get_next_state(latent_img_pre, latent_act, L)
+    recon_img_post = model.decoder(recon_latent_img_post) 
+    return F.mse_loss(recon_img_post.view(-1, 2500), img_post.view(-1, 2500), reduction='sum')
 
 # def get_U(action):         
 #     action = action.to(device).float().view(-1, 5) 
@@ -167,8 +172,9 @@ def train_new(epoch):
         # loss
         loss_img = loss_function_img(recon_img_pre, img_pre)
         loss_act = loss_function_act(recon_act, act)
-        loss_latent, L = loss_function_latent(latent_img_pre, latent_img_post, latent_act, L_bp, math=MATH)
-        loss = loss_img + GAMMA_act * loss_act + GAMMA_latent * loss_latent
+        loss_latent, L = loss_function_latent(latent_img_pre, latent_img_post, latent_act, L_bp, math=MATH) # TODO: add prediction loss, decode the latent state to predicted state     
+        loss_predict = loss_function_pred(img_post, latent_img_pre, latent_act, L)
+        loss = loss_img + GAMMA_act * loss_act + GAMMA_latent * loss_latent + GAMMA_pred * loss_predict
         loss.backward()
         train_loss += loss.item()
         img_loss += loss_img.item()
@@ -241,10 +247,12 @@ parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
 parser.add_argument('--epochs', type=int, default=5, metavar='N',
                     help='number of epochs to train (default: 500)')
-parser.add_argument('--gamma-act', type=int, default=150, metavar='N',
-                    help='scale coefficient for loss of action (default: 150)')   
-parser.add_argument('--gamma-lat', type=int, default=150, metavar='N',
-                    help='scale coefficient for loss of latent dynamics (default: 150)')                                       
+parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
+                    help='scale coefficient for loss of action (default: 150*3)')   
+parser.add_argument('--gamma-lat', type=int, default=900, metavar='N',
+                    help='scale coefficient for loss of latent dynamics (default: 150*6)')     
+parser.add_argument('--gamma-pred', type=int, default=1, metavar='N',
+                    help='scale coefficient for loss of prediction (default: 1)')                                                          
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
 parser.add_argument('--math', default=False,
@@ -280,6 +288,7 @@ print('***** Finish Preparing Data *****')
 MATH = args.math # True: use regression; False: use backpropagation
 GAMMA_act = args.gamma_act
 GAMMA_latent = args.gamma_lat
+GAMMA_pred = args.gamma_pred
 print('***** Start Training & Testing *****')
 device = torch.device("cuda" if args.cuda else "cpu")
 model = CAE().to(device)
