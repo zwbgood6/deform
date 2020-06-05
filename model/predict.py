@@ -62,7 +62,7 @@ class CAE(nn.Module):
 
     def decoder_act(self, u):
         h2 = relu(self.fc7(u))
-        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor) + self.add_tensor 
+        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
 
     def forward(self, x_pre, u, x_post):
         x_pre = self.encoder(x_pre) 
@@ -116,7 +116,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test1'
+folder_name = 'test'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
