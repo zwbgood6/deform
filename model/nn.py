@@ -9,7 +9,9 @@ from torch.utils.data import Dataset, DataLoader
 from deform.model.create_dataset import *
 from deform.model.hidden_dynamics import *
 import matplotlib.pyplot as plt
-from deform.utils.utils import plot_train_loss, plot_test_loss, plot_latent_loss, plot_img_loss, plot_act_loss, plot_pred_loss, plot_sample, rect
+from deform.utils.utils import plot_train_loss, plot_train_latent_loss, plot_train_img_loss, plot_train_act_loss, plot_train_pred_loss, \
+                               plot_test_loss, plot_test_latent_loss, plot_test_img_loss, plot_test_act_loss, plot_test_pred_loss, \
+                               plot_sample, rect, save_data
 import os
 import math
 
@@ -208,6 +210,10 @@ def train_new(epoch):
 def test_new(epoch, L):
     model.eval()
     test_loss = 0
+    img_loss = 0
+    act_loss = 0
+    latent_loss = 0
+    pred_loss = 0    
     with torch.no_grad():
         for batch_idx, batch_data in enumerate(testloader):
             # image before action
@@ -228,6 +234,10 @@ def test_new(epoch, L):
             loss_predict = loss_function_pred(img_post, latent_img_pre, latent_act, L)
             loss = loss_img + GAMMA_act * loss_act + GAMMA_latent * loss_latent + GAMMA_pred * loss_predict
             test_loss += loss.item()
+            img_loss += loss_img.item()
+            act_loss += GAMMA_act * loss_act.item()
+            latent_loss += GAMMA_latent * loss_latent.item()
+            pred_loss += GAMMA_pred * loss_predict.item()            
             if batch_idx == 0:
                 n = min(batch_data['image_bi_pre'].size(0), 8)
                 comparison = torch.cat([batch_data['image_bi_pre'][:n],
@@ -240,7 +250,7 @@ def test_new(epoch, L):
                             recon_act.view(-1, 4)[:n].detach().cpu().numpy(), 
                             './result/{}/reconstruction_act_test/recon_epoch_{}.png'.format(folder_name, epoch))                           
     n = len(testloader.dataset)
-    return test_loss/n
+    return test_loss/n, img_loss/n, act_loss/n, latent_loss/n, pred_loss/n
 
 # args
 parser = argparse.ArgumentParser(description='CAE Rope Deform Example')
@@ -248,14 +258,14 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=5, metavar='N',
+parser.add_argument('--epochs', type=int, default=11, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
 parser.add_argument('--gamma-lat', type=int, default=900, metavar='N',
                     help='scale coefficient for loss of latent dynamics (default: 150*6)')     
-parser.add_argument('--gamma-pred', type=int, default=2, metavar='N',
-                    help='scale coefficient for loss of prediction (default: 1)')                                                          
+parser.add_argument('--gamma-pred', type=int, default=3, metavar='N',
+                    help='scale coefficient for loss of prediction (default: 3)')                                                          
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
 parser.add_argument('--math', default=False,
@@ -313,30 +323,33 @@ if not os.path.exists('./result/' + folder_name + '/reconstruction_act_test'):
     os.makedirs('./result/' + folder_name + '/reconstruction_act_test')
 
 train_loss_all = []
-img_loss_all = []
-act_loss_all = []
-latent_loss_all = []
-pred_loss_all = []
+train_img_loss_all = []
+train_act_loss_all = []
+train_latent_loss_all = []
+train_pred_loss_all = []
 test_loss_all = []
+test_img_loss_all = []
+test_act_loss_all = []
+test_latent_loss_all = []
+test_pred_loss_all = []
 
 for epoch in range(1, epochs+1):
-    train_loss, img_loss, act_loss, latent_loss, pred_loss, L = train_new(epoch)
-    test_loss = test_new(epoch, L)
+    train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss, L = train_new(epoch)
+    test_loss, test_img_loss, test_act_loss, test_latent_loss, test_pred_loss = test_new(epoch, L)
     train_loss_all.append(train_loss)
-    img_loss_all.append(img_loss)
-    act_loss_all.append(act_loss)
-    latent_loss_all.append(latent_loss)
-    pred_loss_all.append(pred_loss)
+    train_img_loss_all.append(train_img_loss)
+    train_act_loss_all.append(train_act_loss)
+    train_latent_loss_all.append(train_latent_loss)
+    train_pred_loss_all.append(train_pred_loss)
     test_loss_all.append(test_loss)
+    test_img_loss_all.append(test_img_loss)
+    test_act_loss_all.append(test_act_loss)
+    test_latent_loss_all.append(test_latent_loss)
+    test_pred_loss_all.append(test_pred_loss)    
     if epoch % args.log_interval == 0:
-        np.save('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), train_loss_all)
-        np.save('./result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs), img_loss_all)
-        np.save('./result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs), act_loss_all)
-        np.save('./result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs), latent_loss_all)
-        np.save('./result/{}/pred_loss_epoch{}.npy'.format(folder_name, epochs), pred_loss_all)
-        np.save('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), test_loss_all)
-        L_d = L.detach().cpu().numpy()
-        np.save('./result/{}/control_matrix.npy'.format(folder_name), L_d) 
+        save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act_loss_all,
+                  train_latent_loss_all, train_pred_loss_all, test_loss_all, test_img_loss_all,
+                  test_act_loss_all, test_latent_loss_all, test_pred_loss_all, L.detach().cpu().numpy())
         # save checkpoint
         PATH = './result/{}/checkpoint'.format(folder_name)
         torch.save({
@@ -347,23 +360,21 @@ for epoch in range(1, epochs+1):
                     }, 
                     PATH)
 
-np.save('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), train_loss_all)
-np.save('./result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs), img_loss_all)
-np.save('./result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs), act_loss_all)
-np.save('./result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs), latent_loss_all)
-np.save('./result/{}/pred_loss_epoch{}.npy'.format(folder_name, epochs), pred_loss_all)
-np.save('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), test_loss_all)
-L_d = L.detach().cpu().numpy()
-np.save('./result/{}/control_matrix.npy'.format(folder_name), L_d)
-
+save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act_loss_all,
+          train_latent_loss_all, train_pred_loss_all, test_loss_all, test_img_loss_all,
+          test_act_loss_all, test_latent_loss_all, test_pred_loss_all, L.detach().cpu().numpy())
 
 # plot
 plot_train_loss('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
+plot_train_img_loss('./result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
+plot_train_act_loss('./result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
+plot_train_latent_loss('./result/{}/train_latent_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
+plot_train_pred_loss('./result/{}/train_pred_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
 plot_test_loss('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-plot_img_loss('./result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-plot_act_loss('./result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-plot_latent_loss('./result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-plot_pred_loss('./result/{}/pred_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
+plot_test_img_loss('./result/{}/test_img_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
+plot_test_act_loss('./result/{}/test_act_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
+plot_test_latent_loss('./result/{}/test_latent_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
+plot_test_pred_loss('./result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
 
 # save checkpoint
 PATH = './result/{}/checkpoint'.format(folder_name)

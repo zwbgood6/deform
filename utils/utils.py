@@ -172,54 +172,96 @@ def plot_test_loss(file_name, folder_name):
     plt.savefig('./result/{}/plot/test_loss.png'.format(folder_name))
     plt.close()    
 
-
-def plot_img_loss(file_name, folder_name):
+def plot_train_img_loss(file_name, folder_name):
     img_loss = np.load(file_name)
     plt.figure()
     plt.plot(img_loss)
-    plt.title('Image Loss')
+    plt.title('Train Image Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
-    plt.savefig('./result/{}/plot/image_loss.png'.format(folder_name))
+    plt.savefig('./result/{}/plot/train_image_loss.png'.format(folder_name))
     plt.close()
 
-def plot_act_loss(file_name, folder_name):
+def plot_train_act_loss(file_name, folder_name):
     act_loss = np.load(file_name)
     plt.figure()
     plt.plot(act_loss)
-    plt.title('Action Loss')
+    plt.title('Train Action Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
-    plt.savefig('./result/{}/plot/action_loss.png'.format(folder_name))
+    plt.savefig('./result/{}/plot/train_action_loss.png'.format(folder_name))
     plt.close()
 
-def plot_latent_loss(file_name, folder_name):
+def plot_train_latent_loss(file_name, folder_name):
     latent_loss = np.load(file_name)
     plt.figure()
     plt.plot(latent_loss)
-    plt.title('Latent Loss')
+    plt.title('Train Latent Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
-    plt.savefig('./result/{}/plot/latent_loss.png'.format(folder_name))
+    plt.savefig('./result/{}/plot/train_latent_loss.png'.format(folder_name))
     plt.close()
 
-def plot_pred_loss(file_name, folder_name):
+def plot_train_pred_loss(file_name, folder_name):
     pred_loss = np.load(file_name)
     plt.figure()
     plt.plot(pred_loss)
-    plt.title('Prediction Loss')
+    plt.title('Train Prediction Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
-    plt.savefig('./result/{}/plot/prediction_loss.png'.format(folder_name))
+    plt.savefig('./result/{}/plot/train_prediction_loss.png'.format(folder_name))
     plt.close()
 
-def plot_all_loss(train, test, img, act, latent, pred, folder_name):
-    train_loss = np.load(train)[10:]
-    test_loss = np.load(test)[10:]
-    img_loss = np.load(img)[10:]
-    act_loss = np.load(act)[10:]
-    latent_loss = np.load(latent)[10:]
-    pred_loss = np.load(pred)[10:]
+def plot_test_img_loss(file_name, folder_name):
+    img_loss = np.load(file_name)
+    plt.figure()
+    plt.plot(img_loss)
+    plt.title('Test Image Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/test_image_loss.png'.format(folder_name))
+    plt.close()
+
+def plot_test_act_loss(file_name, folder_name):
+    act_loss = np.load(file_name)
+    plt.figure()
+    plt.plot(act_loss)
+    plt.title('Test Action Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/test_action_loss.png'.format(folder_name))
+    plt.close()
+
+def plot_test_latent_loss(file_name, folder_name):
+    latent_loss = np.load(file_name)
+    plt.figure()
+    plt.plot(latent_loss)
+    plt.title('Test Latent Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/test_latent_loss.png'.format(folder_name))
+    plt.close()
+
+def plot_test_pred_loss(file_name, folder_name):
+    pred_loss = np.load(file_name)
+    plt.figure()
+    plt.plot(pred_loss)
+    plt.title('Test Prediction Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/test_prediction_loss.png'.format(folder_name))
+    plt.close()
+# def plot_separate_loss(file_names, folder_name):
+#     for file_name in file_names:
+
+
+def plot_all_train_loss(train, test, img, act, latent, pred, folder_name):
+    train_loss = np.load(train)#[10:]
+    test_loss = np.load(test)#[10:]
+    img_loss = np.load(img)#[10:]
+    act_loss = np.load(act)#[10:]
+    latent_loss = np.load(latent)#[10:]
+    pred_loss = np.load(pred)#[10:]
     plt.figure()
     train_curve, = plt.plot(train_loss, label='Train')
     test_curve, = plt.plot(test_loss, label='Test')
@@ -231,20 +273,58 @@ def plot_all_loss(train, test, img, act, latent, pred, folder_name):
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend([train_curve, test_curve, img_curve, act_curve, latent_curve, pred_curve], ['Train', 'Test', 'Image', 'Action', 'Latent', 'Prediction'])
-    plt.savefig('./result/{}/plot/all_loss.png'.format(folder_name))
+    plt.savefig('./result/{}/plot/all_train_loss.png'.format(folder_name))
     plt.close()
 
-epochs = 5
-folder_name = 'test'
-train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
-test = './result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs)
-img = './result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs)
-act = './result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs)
-latent = './result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs)
-pred = './result/{}/pred_loss_epoch{}.npy'.format(folder_name, epochs)
-plot_all_loss(train, test, img, act, latent, pred, folder_name)
+def plot_all_test_loss(test, img, act, latent, pred, folder_name):
+    test_loss = np.load(test)#[10:]
+    img_loss = np.load(img)#[10:]
+    act_loss = np.load(act)#[10:]
+    latent_loss = np.load(latent)#[10:]
+    pred_loss = np.load(pred)#[10:]
+    plt.figure()
+    test_curve, = plt.plot(test_loss, label='Test')
+    img_curve, = plt.plot(img_loss, label='Image')
+    act_curve, = plt.plot(act_loss, label='Action')
+    latent_curve, = plt.plot(latent_loss, label='Latent')
+    pred_curve, = plt.plot(pred_loss, label='Prediction')
+    plt.title('Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend([test_curve, img_curve, act_curve, latent_curve, pred_curve], ['Test', 'Image', 'Action', 'Latent', 'Prediction'])
+    plt.savefig('./result/{}/plot/all_test_loss.png'.format(folder_name))
+    plt.close()
 
-# plot_test_loss('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-# plot_img_loss('./result/{}/img_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-# plot_act_loss('./result/{}/act_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-# plot_latent_loss('./result/{}/latent_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
+def save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act_loss_all,
+              train_latent_loss_all, train_pred_loss_all, test_loss_all, test_img_loss_all,
+              test_act_loss_all, test_latent_loss_all, test_pred_loss_all, L):
+    np.save('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), train_loss_all)
+    np.save('./result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs), train_img_loss_all)
+    np.save('./result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs), train_act_loss_all)
+    np.save('./result/{}/train_latent_loss_epoch{}.npy'.format(folder_name, epochs), train_latent_loss_all)
+    np.save('./result/{}/train_pred_loss_epoch{}.npy'.format(folder_name, epochs), train_pred_loss_all)
+    np.save('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), test_loss_all)
+    np.save('./result/{}/test_img_loss_epoch{}.npy'.format(folder_name, epochs), test_img_loss_all)
+    np.save('./result/{}/test_act_loss_epoch{}.npy'.format(folder_name, epochs), test_act_loss_all)
+    np.save('./result/{}/test_latent_loss_epoch{}.npy'.format(folder_name, epochs), test_latent_loss_all)
+    np.save('./result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs), test_pred_loss_all)        
+    np.save('./result/{}/control_matrix.npy'.format(folder_name), L)                   
+
+
+# epochs = 11
+# folder_name = 'test'
+# train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
+# train_img = './result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs)
+# train_act = './result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs)
+# train_latent = './result/{}/train_latent_loss_epoch{}.npy'.format(folder_name, epochs)
+# train_pred = './result/{}/train_pred_loss_epoch{}.npy'.format(folder_name, epochs)
+
+# test = './result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs)
+# test_img = './result/{}/test_img_loss_epoch{}.npy'.format(folder_name, epochs)
+# test_act = './result/{}/test_act_loss_epoch{}.npy'.format(folder_name, epochs)
+# test_latent = './result/{}/test_latent_loss_epoch{}.npy'.format(folder_name, epochs)
+# test_pred = './result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs)
+
+# plot_all_train_loss(train, test, train_img, train_act, train_latent, train_pred, folder_name)
+# plot_all_test_loss(test, test_img, test_act, test_latent, test_pred, folder_name)
+
