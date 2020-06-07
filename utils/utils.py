@@ -1,6 +1,47 @@
 import numpy as np                   
 import math
 import matplotlib.pyplot as plt
+import os
+
+def create_loss_list(loss_logger):
+    if loss_logger is None:
+        train_loss_all = []
+        train_img_loss_all = []
+        train_act_loss_all = []
+        train_latent_loss_all = []
+        train_pred_loss_all = []
+        test_loss_all = []
+        test_img_loss_all = []
+        test_act_loss_all = []
+        test_latent_loss_all = []
+        test_pred_loss_all = []
+    else:
+        train_loss_all = loss_logger['train_loss_all']
+        train_img_loss_all = loss_logger['train_img_loss_all']
+        train_act_loss_all = loss_logger['train_act_loss_all']
+        train_latent_loss_all = loss_logger['train_latent_loss_all']
+        train_pred_loss_all = loss_logger['train_pred_loss_all']
+        test_loss_all = loss_logger['test_loss_all']
+        test_img_loss_all = loss_logger['test_img_loss_all']
+        test_act_loss_all = loss_logger['test_act_loss_all']
+        test_latent_loss_all = loss_logger['test_latent_loss_all']
+        test_pred_loss_all = loss_logger['test_pred_loss_all'] 
+    return train_loss_all, train_img_loss_all, train_act_loss_all, train_latent_loss_all, train_pred_loss_all, \
+           test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_pred_loss_all    
+
+def create_folder(folder_name):
+    if not os.path.exists('./result/' + folder_name):
+        os.makedirs('./result/' + folder_name)
+    if not os.path.exists('./result/' + folder_name + '/plot'):
+        os.makedirs('./result/' + folder_name + '/plot')
+    if not os.path.exists('./result/' + folder_name + '/reconstruction_test'):
+        os.makedirs('./result/' + folder_name + '/reconstruction_test')
+    if not os.path.exists('./result/' + folder_name + '/reconstruction_train'):
+        os.makedirs('./result/' + folder_name + '/reconstruction_train')
+    if not os.path.exists('./result/' + folder_name + '/reconstruction_act_train'):
+        os.makedirs('./result/' + folder_name + '/reconstruction_act_train')
+    if not os.path.exists('./result/' + folder_name + '/reconstruction_act_test'):
+        os.makedirs('./result/' + folder_name + '/reconstruction_act_test')    
 
 def rect(poke, c):
     # from rope.ipynb in Berkeley's rope dataset file
@@ -311,7 +352,7 @@ def save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act
     np.save('./result/{}/control_matrix.npy'.format(folder_name), L)                   
 
 
-# epochs = 11
+# epochs = 30
 # folder_name = 'test'
 # train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
 # train_img = './result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs)

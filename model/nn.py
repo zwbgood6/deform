@@ -11,7 +11,7 @@ from deform.model.hidden_dynamics import *
 import matplotlib.pyplot as plt
 from deform.utils.utils import plot_train_loss, plot_train_latent_loss, plot_train_img_loss, plot_train_act_loss, plot_train_pred_loss, \
                                plot_test_loss, plot_test_latent_loss, plot_test_img_loss, plot_test_act_loss, plot_test_pred_loss, \
-                               plot_sample, rect, save_data
+                               plot_sample, rect, save_data, create_loss_list, create_folder
 import os
 import math
 
@@ -263,7 +263,7 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=11, metavar='N',
+parser.add_argument('--epochs', type=int, default=30, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
@@ -279,6 +279,7 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
+parser.add_argument('--restore', action='store_true', default=False)                    
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 torch.manual_seed(args.seed)
@@ -307,38 +308,35 @@ MATH = args.math # True: use regression; False: use backpropagation
 GAMMA_act = args.gamma_act
 GAMMA_latent = args.gamma_lat
 GAMMA_pred = args.gamma_pred
+
+# create folders
+folder_name = args.folder_name
+create_folder(folder_name)
+
 print('***** Start Training & Testing *****')
 device = torch.device("cuda" if args.cuda else "cpu")
+epochs = args.epochs
 model = CAE().to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-epochs = args.epochs
-folder_name = args.folder_name
 
-if not os.path.exists('./result/' + folder_name):
-    os.makedirs('./result/' + folder_name)
-if not os.path.exists('./result/' + folder_name + '/plot'):
-    os.makedirs('./result/' + folder_name + '/plot')
-if not os.path.exists('./result/' + folder_name + '/reconstruction_test'):
-    os.makedirs('./result/' + folder_name + '/reconstruction_test')
-if not os.path.exists('./result/' + folder_name + '/reconstruction_train'):
-    os.makedirs('./result/' + folder_name + '/reconstruction_train')
-if not os.path.exists('./result/' + folder_name + '/reconstruction_act_train'):
-    os.makedirs('./result/' + folder_name + '/reconstruction_act_train')
-if not os.path.exists('./result/' + folder_name + '/reconstruction_act_test'):
-    os.makedirs('./result/' + folder_name + '/reconstruction_act_test')
+# initial train
+if not args.restore:
+    init_epoch = 1
+    loss_logger = None
+# restore previous train        
+else:
+    print('***** Load Checkpoint *****')
+    PATH = './result/{}/checkpoint'.format(folder_name)
+    checkpoint = torch.load(PATH, map_location=device)
+    model.load_state_dict(checkpoint['model_state_dict'])  
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    init_epoch = checkpoint['epoch'] + 1
+    loss_logger = checkpoint['loss_logger'] 
 
-train_loss_all = []
-train_img_loss_all = []
-train_act_loss_all = []
-train_latent_loss_all = []
-train_pred_loss_all = []
-test_loss_all = []
-test_img_loss_all = []
-test_act_loss_all = []
-test_latent_loss_all = []
-test_pred_loss_all = []
+train_loss_all, train_img_loss_all, train_act_loss_all, train_latent_loss_all, train_pred_loss_all, \
+test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_pred_loss_all = create_loss_list(loss_logger)         
 
-for epoch in range(1, epochs+1):
+for epoch in range(init_epoch, epochs+1):
     train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss, L = train_new(epoch)
     test_loss, test_img_loss, test_act_loss, test_latent_loss, test_pred_loss = test_new(epoch, L)
     train_loss_all.append(train_loss)
@@ -357,11 +355,16 @@ for epoch in range(1, epochs+1):
                   test_act_loss_all, test_latent_loss_all, test_pred_loss_all, L.detach().cpu().numpy())
         # save checkpoint
         PATH = './result/{}/checkpoint'.format(folder_name)
+        loss_logger = {'train_loss_all': train_loss_all, 'train_img_loss_all': train_img_loss_all, 
+                       'train_act_loss_all': train_act_loss_all, 'train_latent_loss_all': train_latent_loss_all,
+                       'train_pred_loss_all': train_pred_loss_all, 'test_loss_all': test_loss_all,
+                       'test_img_loss_all': test_img_loss_all, 'test_act_loss_all': test_act_loss_all, 
+                       'test_latent_loss_all': test_latent_loss_all, 'test_pred_loss_all': test_pred_loss_all}
         torch.save({
-                    'epoch': epochs,
+                    'epoch': epoch,
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
-                    'loss': train_loss
+                    'loss_logger': loss_logger
                     }, 
                     PATH)
 
@@ -383,14 +386,18 @@ plot_test_pred_loss('./result/{}/test_pred_loss_epoch{}.npy'.format(folder_name,
 
 # save checkpoint
 PATH = './result/{}/checkpoint'.format(folder_name)
+loss_logger = {'train_loss_all': train_loss_all, 'train_img_loss_all': train_img_loss_all, 
+               'train_act_loss_all': train_act_loss_all, 'train_latent_loss_all': train_latent_loss_all,
+               'train_pred_loss_all': train_pred_loss_all, 'test_loss_all': test_loss_all,
+               'test_img_loss_all': test_img_loss_all, 'test_act_loss_all': test_act_loss_all, 
+               'test_latent_loss_all': test_latent_loss_all, 'test_pred_loss_all': test_pred_loss_all}
 torch.save({
-            'epoch': epochs,
+            'epoch': epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'loss': train_loss
+            'loss_logger': loss_logger
             }, 
             PATH)
-
 print('***** End Program *****')            
 
 
