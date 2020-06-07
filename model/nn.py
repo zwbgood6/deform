@@ -25,20 +25,25 @@ class CAE(nn.Module):
                                          nn.Conv2d(32, 64, 3, padding=1), 
                                          nn.ReLU(),
                                          nn.MaxPool2d(3, stride=2),
-                                         nn.Conv2d(64, 64, 3, padding=1),
+                                         nn.Conv2d(64, 128, 3, padding=1),
                                          nn.ReLU(),
-                                         nn.Conv2d(64, 64, 3, padding=1), # channel 1 32 64 64; the next batch size should be larger than 8, 4 corner features + 4 direction features
+                                         nn.MaxPool2d(3, stride=2),
+                                         nn.Conv2d(128, 128, 3, padding=1), # channel 1 32 64 64; the next batch size should be larger than 8, 4 corner features + 4 direction features
                                          nn.ReLU(),
-                                         nn.MaxPool2d(3, stride=2))  
-        self.fc1 = nn.Linear(64*5*5, latent_state_dim) # size: 64*5*5 > latent_state_dim
-        self.fc2 = nn.Linear(latent_state_dim, 64*5*5)
-        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(64, 64, 3, stride=2, padding=2),
+                                         nn.Conv2d(128, 128, 3, padding=1),
+                                         nn.ReLU(),
+                                         nn.MaxPool2d(3, stride=2, padding=1))  
+        self.fc1 = nn.Linear(128*3*3, latent_state_dim) # size: 128*3*3 > latent_state_dim
+        self.fc2 = nn.Linear(latent_state_dim, 128*3*3)
+        self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
                                           nn.ReLU(),
-                                          nn.ConvTranspose2d(64, 64, 3, stride=2, padding=1),
+                                          nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
                                           nn.ReLU(), 
-                                          nn.ConvTranspose2d(64, 32, 3, stride=2, padding=1),
+                                          nn.ConvTranspose2d(128, 64, 3, stride=2, padding=2),
+                                          nn.ReLU(),                                           
+                                          nn.ConvTranspose2d(64, 32, 3, stride=2, padding=2),
                                           nn.ReLU(),                                         
-                                          nn.ConvTranspose2d(32, 1, 2, stride=2, padding=0),
+                                          nn.ConvTranspose2d(32, 1, 2, stride=2, padding=2),
                                           nn.Sigmoid())
         # action
         self.fc5 = nn.Linear(4, 30)
@@ -59,7 +64,7 @@ class CAE(nn.Module):
 
     def decoder(self, x):
         x = relu(self.fc2(x))
-        x = x.view(-1, 64, 5, 5) #(batch size, channel, H, W)
+        x = x.view(-1, 128, 3, 3) #(batch size, channel, H, W)
         return self.dconv_layers(x)
     
     def encoder_act(self, u):
