@@ -297,12 +297,12 @@ def plot_test_pred_loss(file_name, folder_name):
 
 
 def plot_all_train_loss(train, test, img, act, latent, pred, folder_name):
-    train_loss = np.load(train)#[10:]
-    test_loss = np.load(test)#[10:]
-    img_loss = np.load(img)#[10:]
-    act_loss = np.load(act)#[10:]
-    latent_loss = np.load(latent)#[10:]
-    pred_loss = np.load(pred)#[10:]
+    train_loss = np.load(train)[10:]
+    test_loss = np.load(test)[10:]
+    img_loss = np.load(img)[10:]
+    act_loss = np.load(act)[10:]
+    latent_loss = np.load(latent)[10:]
+    pred_loss = np.load(pred)[10:]
     plt.figure()
     train_curve, = plt.plot(train_loss, label='Train')
     test_curve, = plt.plot(test_loss, label='Test')
@@ -310,7 +310,7 @@ def plot_all_train_loss(train, test, img, act, latent, pred, folder_name):
     act_curve, = plt.plot(act_loss, label='Action')
     latent_curve, = plt.plot(latent_loss, label='Latent')
     pred_curve, = plt.plot(pred_loss, label='Prediction')
-    plt.title('Loss')
+    plt.title('Train loss and its subcomponents')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend([train_curve, test_curve, img_curve, act_curve, latent_curve, pred_curve], ['Train', 'Test', 'Image', 'Action', 'Latent', 'Prediction'])
@@ -318,18 +318,18 @@ def plot_all_train_loss(train, test, img, act, latent, pred, folder_name):
     plt.close()
 
 def plot_all_test_loss(test, img, act, latent, pred, folder_name):
-    test_loss = np.load(test)#[10:]
-    img_loss = np.load(img)#[10:]
-    act_loss = np.load(act)#[10:]
-    latent_loss = np.load(latent)#[10:]
-    pred_loss = np.load(pred)#[10:]
+    test_loss = np.load(test)[20:]
+    img_loss = np.load(img)[20:]
+    act_loss = np.load(act)[20:]
+    latent_loss = np.load(latent)[20:]
+    pred_loss = np.load(pred)[20:]
     plt.figure()
     test_curve, = plt.plot(test_loss, label='Test')
     img_curve, = plt.plot(img_loss, label='Image')
     act_curve, = plt.plot(act_loss, label='Action')
     latent_curve, = plt.plot(latent_loss, label='Latent')
     pred_curve, = plt.plot(pred_loss, label='Prediction')
-    plt.title('Loss')
+    plt.title('Test loss and its subcomponents')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend([test_curve, img_curve, act_curve, latent_curve, pred_curve], ['Test', 'Image', 'Action', 'Latent', 'Prediction'])
@@ -352,8 +352,8 @@ def save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act
     np.save('./result/{}/control_matrix.npy'.format(folder_name), L)                   
 
 
-epochs = 500
-folder_name = 'test2'
+epochs = 1000
+folder_name = 'sweep_s800_a200'
 train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
 train_img = './result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs)
 train_act = './result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs)

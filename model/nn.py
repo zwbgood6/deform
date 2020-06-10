@@ -16,7 +16,7 @@ import os
 import math
 
 class CAE(nn.Module):
-    def __init__(self, latent_state_dim=500, latent_act_dim=100):
+    def __init__(self, latent_state_dim=800, latent_act_dim=200):
         super(CAE, self).__init__()
         # state
         self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
@@ -263,13 +263,13 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=30, metavar='N',
+parser.add_argument('--epochs', type=int, default=1000, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
 parser.add_argument('--gamma-lat', type=int, default=900, metavar='N',
                     help='scale coefficient for loss of latent dynamics (default: 150*6)')     
-parser.add_argument('--gamma-pred', type=int, default=3, metavar='N',
+parser.add_argument('--gamma-pred', type=int, default=2, metavar='N',
                     help='scale coefficient for loss of prediction (default: 3)')                                                          
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
@@ -286,7 +286,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 1000#77944
+total_img_num = 77944
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
@@ -294,9 +294,13 @@ resz_act_path = './rope_dataset/rope_all_resize_gray/resize_actions.npy'
 #ori_act_path = './rope_dataset/rope_all_ori/actions.npy'
 resz_act = np.load(resz_act_path)
 #ori_act = np.load(ori_act_path)
-dataset = MyDataset(image_paths_bi, resz_act)
-trainset = MyDataset(image_paths_bi[0:train_num], resz_act[0:train_num])
-testset = MyDataset(image_paths_bi[train_num:], resz_act[train_num:])
+transform = transforms.Compose([Translation(10), 
+                                HFlip(0.5), 
+                                VFlip(0.5), 
+                                ToTensor()])
+dataset = MyDataset(image_paths_bi, resz_act, transform=ToTensor())
+trainset = MyDataset(image_paths_bi[0:train_num], resz_act[0:train_num], transform=transform)
+testset = MyDataset(image_paths_bi[train_num:], resz_act[train_num:], transform=ToTensor())
 trainloader = DataLoader(trainset, batch_size=args.batch_size,
                         shuffle=True, num_workers=4, collate_fn=my_collate)
 testloader = DataLoader(testset, batch_size=args.batch_size,
