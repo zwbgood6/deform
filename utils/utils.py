@@ -338,7 +338,7 @@ def plot_all_test_loss(test, img, act, latent, pred, folder_name):
 
 def save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act_loss_all,
               train_latent_loss_all, train_pred_loss_all, test_loss_all, test_img_loss_all,
-              test_act_loss_all, test_latent_loss_all, test_pred_loss_all, L):
+              test_act_loss_all, test_latent_loss_all, test_pred_loss_all, L=None):
     np.save('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), train_loss_all)
     np.save('./result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs), train_img_loss_all)
     np.save('./result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs), train_act_loss_all)
@@ -349,11 +349,12 @@ def save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act
     np.save('./result/{}/test_act_loss_epoch{}.npy'.format(folder_name, epochs), test_act_loss_all)
     np.save('./result/{}/test_latent_loss_epoch{}.npy'.format(folder_name, epochs), test_latent_loss_all)
     np.save('./result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs), test_pred_loss_all)        
-    np.save('./result/{}/control_matrix.npy'.format(folder_name), L)                   
+    if L is not None:
+        np.save('./result/{}/control_matrix.npy'.format(folder_name), L)                   
 
 
 epochs = 1000
-folder_name = 'sweep_s800_a200'
+folder_name = 'test'
 train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
 train_img = './result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs)
 train_act = './result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs)

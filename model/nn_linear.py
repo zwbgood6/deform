@@ -35,6 +35,8 @@ class CAE(nn.Module):
                                          nn.MaxPool2d(3, stride=2, padding=1))  
         self.fc1 = nn.Linear(128*3*3, latent_state_dim) # size: 128*3*3 > latent_state_dim
         self.fc2 = nn.Linear(latent_state_dim, 128*3*3)
+        self.fc3 = nn.Linear(128*3*3, 10000) # 128*3*3=1152 -> 10000 -> 500*100=50000
+        self.fc4 = nn.Linear(10000, latent_state_dim*latent_act_dim) # TODO: when change latent dim, also change 10000.
         self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
                                           nn.ReLU(),
                                           nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
@@ -51,16 +53,20 @@ class CAE(nn.Module):
         self.fc7 = nn.Linear(latent_act_dim, 30) # 10-100
         self.fc8 = nn.Linear(30, 4)  
         # control matrix
-        self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True)) # TODO: okay for random initializaion?
+        #self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True)) 
         # multiplication/additive to action
         # add these in order to use GPU for parameters
         self.mul_tensor = torch.tensor([50, 50, 2*math.pi, 0.14]) 
         self.add_tensor = torch.tensor([0, 0, 0, 0.01]) 
+        # latent dim
+        self.latent_act_dim = latent_act_dim
+        self.latent_state_dim = latent_state_dim
 
     def encoder(self, x):
         x = self.conv_layers(x)
         x = x.view(x.shape[0], -1) 
-        return relu(self.fc1(x))
+        # return latent state g, and batch numbers of control matrix L.T=f(x), L.T is transpose of L
+        return relu(self.fc1(x)), relu(self.fc4(relu(self.fc3(x)))).view(-1, self.latent_act_dim, self.latent_state_dim) 
 
     def decoder(self, x):
         x = relu(self.fc2(x))
@@ -76,10 +82,10 @@ class CAE(nn.Module):
         return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
 
     def forward(self, x_pre, u, x_post):
-        x_pre = self.encoder(x_pre) 
+        x_pre, L_T = self.encoder(x_pre) 
         u = self.encoder_act(u)  
-        x_post = self.encoder(x_post)     
-        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), self.control_matrix
+        x_post, _ = self.encoder(x_post)     
+        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), L_T#self.control_matrix
 
 def loss_function(recon_x, x):
     '''
@@ -119,14 +125,12 @@ def loss_function_act(recon_act, act):
 #     loss_latent = get_error(G, U, L)
 #     return loss_latent
 
-def loss_function_latent(latent_img_pre, latent_img_post, latent_action, L, math=False):
+def loss_function_latent_linear(latent_img_pre, latent_img_post, latent_action, L_T):
     G = latent_img_post - latent_img_pre
-    if math:
-        L = get_control_matrix(G, latent_action)
-    return get_error(G, latent_action, L), L
+    return get_error_linear(G, latent_action, L_T)
 
-def loss_function_pred(img_post, latent_img_pre, latent_act, L):
-    recon_latent_img_post = get_next_state(latent_img_pre, latent_act, L)
+def loss_function_pred_linear(img_post, latent_img_pre, latent_act, L_T):
+    recon_latent_img_post = get_next_state_linear(latent_img_pre, latent_act, L_T)
     recon_img_post = model.decoder(recon_latent_img_post) 
     return F.binary_cross_entropy(recon_img_post.view(-1, 2500), img_post.view(-1, 2500), reduction='sum')
 
@@ -176,12 +180,12 @@ def train_new(epoch):
         # optimization
         optimizer.zero_grad()
         # model
-        latent_img_pre, latent_act, latent_img_post, recon_img_pre, recon_act, L_bp = model(img_pre, act, img_post)
+        latent_img_pre, latent_act, latent_img_post, recon_img_pre, recon_act, L_T = model(img_pre, act, img_post)
         # loss
         loss_img = loss_function_img(recon_img_pre, img_pre)
         loss_act = loss_function_act(recon_act, act)
-        loss_latent, L = loss_function_latent(latent_img_pre, latent_img_post, latent_act, L_bp, math=MATH) # TODO: add prediction loss, decode the latent state to predicted state     
-        loss_predict = loss_function_pred(img_post, latent_img_pre, latent_act, L)
+        loss_latent = loss_function_latent_linear(latent_img_pre, latent_img_post, latent_act, L_T) # TODO: add prediction loss, decode the latent state to predicted state     
+        loss_predict = loss_function_pred_linear(img_post, latent_img_pre, latent_act, L_T)
         loss = loss_img + GAMMA_act * loss_act + GAMMA_latent * loss_latent + GAMMA_pred * loss_predict
         loss.backward()
         train_loss += loss.item()
@@ -189,6 +193,7 @@ def train_new(epoch):
         act_loss += GAMMA_act * loss_act.item()
         latent_loss += GAMMA_latent * loss_latent.item()
         pred_loss += GAMMA_pred * loss_predict.item()
+        #torch.cuda.empty_cache() # prevent CUDA out of memory RuntimeError
         optimizer.step()
         if batch_idx % 5 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -210,9 +215,9 @@ def train_new(epoch):
     print('====> Epoch: {} Average loss: {:.4f}'.format(
           epoch, train_loss / len(trainloader.dataset)))
     n = len(trainloader.dataset)      
-    return train_loss/n, img_loss/n, act_loss/n, latent_loss/n, pred_loss/n, L
+    return train_loss/n, img_loss/n, act_loss/n, latent_loss/n, pred_loss/n
 
-def test_new(epoch, L):
+def test_new(epoch):
     model.eval()
     test_loss = 0
     img_loss = 0
@@ -231,12 +236,12 @@ def test_new(epoch, L):
             img_post = batch_data['image_bi_post']
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # model
-            latent_img_pre, latent_act, latent_img_post, recon_img_pre, recon_act, _ = model(img_pre, act, img_post)
+            latent_img_pre, latent_act, latent_img_post, recon_img_pre, recon_act, L_T = model(img_pre, act, img_post)
             # loss
             loss_img = loss_function_img(recon_img_pre, img_pre)
             loss_act = loss_function_act(recon_act, act)
-            loss_latent, _ = loss_function_latent(latent_img_pre, latent_img_post, latent_act, L, math=False)
-            loss_predict = loss_function_pred(img_post, latent_img_pre, latent_act, L)
+            loss_latent = loss_function_latent_linear(latent_img_pre, latent_img_post, latent_act, L_T)
+            loss_predict = loss_function_pred_linear(img_post, latent_img_pre, latent_act, L_T)
             loss = loss_img + GAMMA_act * loss_act + GAMMA_latent * loss_latent + GAMMA_pred * loss_predict
             test_loss += loss.item()
             img_loss += loss_img.item()
@@ -263,7 +268,7 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=5, metavar='N',
+parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
@@ -283,6 +288,7 @@ parser.add_argument('--restore', action='store_true', default=False)
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 torch.manual_seed(args.seed)
+
 
 # dataset
 print('***** Preparing Data *****')
@@ -323,6 +329,7 @@ epochs = args.epochs
 model = CAE().to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
+
 # initial train
 if not args.restore:
     init_epoch = 1
@@ -341,8 +348,8 @@ train_loss_all, train_img_loss_all, train_act_loss_all, train_latent_loss_all, t
 test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_pred_loss_all = create_loss_list(loss_logger)         
 
 for epoch in range(init_epoch, epochs+1):
-    train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss, L = train_new(epoch)
-    test_loss, test_img_loss, test_act_loss, test_latent_loss, test_pred_loss = test_new(epoch, L)
+    train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch)
+    test_loss, test_img_loss, test_act_loss, test_latent_loss, test_pred_loss = test_new(epoch)
     train_loss_all.append(train_loss)
     train_img_loss_all.append(train_img_loss)
     train_act_loss_all.append(train_act_loss)
@@ -356,7 +363,7 @@ for epoch in range(init_epoch, epochs+1):
     if epoch % args.log_interval == 0:
         save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act_loss_all,
                   train_latent_loss_all, train_pred_loss_all, test_loss_all, test_img_loss_all,
-                  test_act_loss_all, test_latent_loss_all, test_pred_loss_all, L.detach().cpu().numpy())
+                  test_act_loss_all, test_latent_loss_all, test_pred_loss_all, None)
         # save checkpoint
         PATH = './result/{}/checkpoint'.format(folder_name)
         loss_logger = {'train_loss_all': train_loss_all, 'train_img_loss_all': train_img_loss_all, 
@@ -374,7 +381,7 @@ for epoch in range(init_epoch, epochs+1):
 
 save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act_loss_all,
           train_latent_loss_all, train_pred_loss_all, test_loss_all, test_img_loss_all,
-          test_act_loss_all, test_latent_loss_all, test_pred_loss_all, L.detach().cpu().numpy())
+          test_act_loss_all, test_latent_loss_all, test_pred_loss_all, None)
 
 # plot
 plot_train_loss('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)

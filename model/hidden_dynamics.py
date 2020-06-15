@@ -101,6 +101,12 @@ def get_error(G, U, L):
     ''' 
     return torch.norm(G-U.mm(L.t()))
 
+def get_error_linear(G, U, L_T):
+    '''||G-UL_T||^2
+    '''     
+    err = G.view(G.shape[0], 1, -1) - torch.matmul(U.view(U.shape[0], 1, -1), L_T)
+    return torch.norm(err)
+
 # def get_next_state(embedded_state, action, L):
 #     '''get next embedded state after certain steps
 #     g_{t+k} = g_{t} + L * (u_{t} + u_{t+1} + ... + u_{t+k-1})
@@ -121,6 +127,16 @@ def get_next_state(latent_image_pre, latent_action, L):
     L:              len(x_i) * len(u_i), control matrix  
     '''
     return latent_image_pre + latent_action.mm(L.t().to(device))
+
+def get_next_state_linear(latent_image_pre, latent_action, L_T):
+    '''
+    latent_image_pre: (batch_size, latent_state_dim)
+    latent_action: (batch_size, latent_act_dim)
+    L_T: (batch_size, latent_act_dim, latent_state_dim)
+    '''
+    #latent_action.shape[0] is batch size
+    latent_state_incremental = torch.matmul(latent_action.view(latent_action.shape[0], 1, -1), L_T).view(latent_action.shape[0], -1)
+    return latent_image_pre + latent_state_incremental 
 
 def get_step_error(embedded_state, action, L, ):
     '''get error with certain steps in latent space 

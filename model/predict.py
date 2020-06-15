@@ -10,7 +10,7 @@ from torchvision.utils import save_image
 import os
 import math
 class CAE(nn.Module):
-    def __init__(self, latent_state_dim=200, latent_act_dim=50):
+    def __init__(self, latent_state_dim=500, latent_act_dim=100):
         super(CAE, self).__init__()
         # state
         self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
@@ -116,12 +116,12 @@ total_img_num = 77944
 image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
 action_path = './rope_dataset/rope_all_resize_gray/resize_actions.npy'
 actions = np.load(action_path)
-dataset = MyDataset(image_paths_bi, actions)   
+dataset = MyDataset(image_paths_bi, actions, transform=ToTensor())   
 dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'sweep_s200_a50'
+folder_name = 'test'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
