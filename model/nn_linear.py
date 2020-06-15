@@ -16,7 +16,7 @@ import os
 import math
 
 class CAE(nn.Module):
-    def __init__(self, latent_state_dim=500, latent_act_dim=100):
+    def __init__(self, latent_state_dim=200, latent_act_dim=50):
         super(CAE, self).__init__()
         # state
         self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
@@ -35,8 +35,8 @@ class CAE(nn.Module):
                                          nn.MaxPool2d(3, stride=2, padding=1))  
         self.fc1 = nn.Linear(128*3*3, latent_state_dim) # size: 128*3*3 > latent_state_dim
         self.fc2 = nn.Linear(latent_state_dim, 128*3*3)
-        self.fc3 = nn.Linear(128*3*3, 10000) # 128*3*3=1152 -> 10000 -> 500*100=50000
-        self.fc4 = nn.Linear(10000, latent_state_dim*latent_act_dim) # TODO: when change latent dim, also change 10000.
+        self.fc3 = nn.Linear(128*3*3, 5000) # 128*3*3=1152 -> 5000 -> 10000
+        self.fc4 = nn.Linear(5000, latent_state_dim*latent_act_dim) # TODO: when change latent dim, also change 10000.
         self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
                                           nn.ReLU(),
                                           nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
@@ -126,8 +126,8 @@ def loss_function_act(recon_act, act):
 #     return loss_latent
 
 def loss_function_latent_linear(latent_img_pre, latent_img_post, latent_action, L_T):
-    G = latent_img_post - latent_img_pre
-    return get_error_linear(G, latent_action, L_T)
+    #G = latent_img_post - latent_img_pre
+    return get_error_linear(latent_img_post - latent_img_pre, latent_action, L_T)
 
 def loss_function_pred_linear(img_post, latent_img_pre, latent_act, L_T):
     recon_latent_img_post = get_next_state_linear(latent_img_pre, latent_act, L_T)
@@ -328,7 +328,7 @@ device = torch.device("cuda" if args.cuda else "cpu")
 epochs = args.epochs
 model = CAE().to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-
+#optimizer = optim.SGD(model.parameters(), lr=1e-3)
 
 # initial train
 if not args.restore:
