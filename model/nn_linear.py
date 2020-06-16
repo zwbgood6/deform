@@ -16,7 +16,7 @@ import os
 import math
 
 class CAE(nn.Module):
-    def __init__(self, latent_state_dim=200, latent_act_dim=50):
+    def __init__(self, latent_state_dim=50, latent_act_dim=10):
         super(CAE, self).__init__()
         # state
         self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
@@ -35,8 +35,8 @@ class CAE(nn.Module):
                                          nn.MaxPool2d(3, stride=2, padding=1))  
         self.fc1 = nn.Linear(128*3*3, latent_state_dim) # size: 128*3*3 > latent_state_dim
         self.fc2 = nn.Linear(latent_state_dim, 128*3*3)
-        self.fc3 = nn.Linear(128*3*3, 5000) # 128*3*3=1152 -> 5000 -> 10000
-        self.fc4 = nn.Linear(5000, latent_state_dim*latent_act_dim) # TODO: when change latent dim, also change 10000.
+        self.fc3 = nn.Linear(128*3*3, latent_state_dim*latent_act_dim) # 128*3*3=1152 -> 5000 -> 10000 TODO: less than 128*3*3
+        #self.fc4 = nn.Linear(5000, latent_state_dim*latent_act_dim) # TODO: when change latent dim, also change 10000.
         self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
                                           nn.ReLU(),
                                           nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
@@ -66,7 +66,7 @@ class CAE(nn.Module):
         x = self.conv_layers(x)
         x = x.view(x.shape[0], -1) 
         # return latent state g, and batch numbers of control matrix L.T=f(x), L.T is transpose of L
-        return relu(self.fc1(x)), relu(self.fc4(relu(self.fc3(x)))).view(-1, self.latent_act_dim, self.latent_state_dim) 
+        return relu(self.fc1(x)), relu(self.fc3(x)).view(-1, self.latent_act_dim, self.latent_state_dim) 
 
     def decoder(self, x):
         x = relu(self.fc2(x))

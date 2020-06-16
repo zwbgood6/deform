@@ -354,7 +354,7 @@ def save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act
 
 
 epochs = 1000
-folder_name = 'test'
+folder_name = 'test_linear'
 train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
 train_img = './result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs)
 train_act = './result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs)
