@@ -300,10 +300,12 @@ resz_act_path = './rope_dataset/rope_all_resize_gray/resize_actions.npy'
 #ori_act_path = './rope_dataset/rope_all_ori/actions.npy'
 resz_act = np.load(resz_act_path)
 #ori_act = np.load(ori_act_path)
+# transform = transforms.Compose([Translation(10), 
+#                                 HFlip(0.5), 
+#                                 VFlip(0.5), 
+#                                 ToTensor()])
 transform = transforms.Compose([Translation(10), 
-                                HFlip(0.5), 
-                                VFlip(0.5), 
-                                ToTensor()])
+                                ToTensor()])                                
 dataset = MyDataset(image_paths_bi, resz_act, transform=ToTensor())
 trainset = MyDataset(image_paths_bi[0:train_num], resz_act[0:train_num], transform=transform)
 testset = MyDataset(image_paths_bi[train_num:], resz_act[train_num:], transform=ToTensor())
