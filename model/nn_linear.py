@@ -303,11 +303,9 @@ resz_act = np.load(resz_act_path)
 # transform = transforms.Compose([Translation(10), 
 #                                 HFlip(0.5), 
 #                                 VFlip(0.5), 
-#                                 ToTensor()])
-transform = transforms.Compose([Translation(10), 
-                                ToTensor()])                                
+#                                 ToTensor()])                            
 dataset = MyDataset(image_paths_bi, resz_act, transform=ToTensor())
-trainset = MyDataset(image_paths_bi[0:train_num], resz_act[0:train_num], transform=transform)
+trainset = MyDataset(image_paths_bi[0:train_num], resz_act[0:train_num], transform=ToTensor())
 testset = MyDataset(image_paths_bi[train_num:], resz_act[train_num:], transform=ToTensor())
 trainloader = DataLoader(trainset, batch_size=args.batch_size,
                         shuffle=True, num_workers=4, collate_fn=my_collate)
