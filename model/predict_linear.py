@@ -11,7 +11,7 @@ import os
 import math
 
 class CAE(nn.Module):
-    def __init__(self, latent_state_dim=200, latent_act_dim=50):
+    def __init__(self, latent_state_dim=100, latent_act_dim=50):
         super(CAE, self).__init__()
         # state
         self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
@@ -30,8 +30,8 @@ class CAE(nn.Module):
                                          nn.MaxPool2d(3, stride=2, padding=1))  
         self.fc1 = nn.Linear(128*3*3, latent_state_dim) # size: 128*3*3 > latent_state_dim
         self.fc2 = nn.Linear(latent_state_dim, 128*3*3)
-        self.fc3 = nn.Linear(128*3*3, 5000) # 128*3*3=1152 -> 5000 -> 10000
-        self.fc4 = nn.Linear(5000, latent_state_dim*latent_act_dim) # TODO: when change latent dim, also change 10000.
+        self.fc3 = nn.Linear(128*3*3, latent_state_dim*latent_act_dim) # 128*3*3=1152 -> 5000 -> 10000 TODO: less than 128*3*3
+        #self.fc4 = nn.Linear(5000, latent_state_dim*latent_act_dim) # TODO: when change latent dim, also change 10000.
         self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
                                           nn.ReLU(),
                                           nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
@@ -61,7 +61,7 @@ class CAE(nn.Module):
         x = self.conv_layers(x)
         x = x.view(x.shape[0], -1) 
         # return latent state g, and batch numbers of control matrix L.T=f(x), L.T is transpose of L
-        return relu(self.fc1(x)), relu(self.fc4(relu(self.fc3(x)))).view(-1, self.latent_act_dim, self.latent_state_dim) 
+        return relu(self.fc1(x)), relu(self.fc3(x)).view(-1, self.latent_act_dim, self.latent_state_dim) 
 
     def decoder(self, x):
         x = relu(self.fc2(x))
@@ -81,6 +81,7 @@ class CAE(nn.Module):
         u = self.encoder_act(u)  
         x_post, _ = self.encoder(x_post)     
         return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), L_T#self.control_matrix
+
 
 # def get_latent_U(U):
 #     U_latent = []           
@@ -128,7 +129,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_linear'
+folder_name = 'test_larger_L'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
