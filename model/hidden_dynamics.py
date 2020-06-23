@@ -118,15 +118,15 @@ def get_error_linear(G, U, L_T):
 #     sum_action = np.sum(action, axis=0)
 #     return embedded_state + sum_action.dot(L.T)
 
-def get_next_state(latent_image_pre, latent_action, L):
+def get_next_state(latent_image_pre, latent_action, K, L):
     '''get next embedded state after certain steps
-    g_{t+k} = g_{t} + L * (u_{t} + u_{t+1} + ... + u_{t+k-1})
+    g_{t+1} = K * g_{t} + L * u_{t}
 
     embedded_state: 1 * len(x_i)
     action:         m * len(u_i), m is the number of predicted steps
     L:              len(x_i) * len(u_i), control matrix  
     '''
-    return latent_image_pre + latent_action.mm(L.t().to(device))
+    return latent_image_pre.mm(K.t().to(device)) + latent_action.mm(L.t().to(device))
 
 def get_next_state_linear(latent_image_pre, latent_action, L_T):
     '''
