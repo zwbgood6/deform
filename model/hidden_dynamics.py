@@ -126,6 +126,8 @@ def get_next_state(latent_image_pre, latent_action, K, L):
     action:         m * len(u_i), m is the number of predicted steps
     L:              len(x_i) * len(u_i), control matrix  
     '''
+    #print("latent_image_pre size:", latent_image_pre.size())
+    #print('K size:', K.size())
     return latent_image_pre.mm(K.t().to(device)) + latent_action.mm(L.t().to(device))
 
 def get_next_state_linear(latent_image_pre, latent_action, K_T, L_T):

@@ -30,8 +30,9 @@ class CAE(nn.Module):
                                          nn.MaxPool2d(3, stride=2, padding=1))  
         self.fc1 = nn.Linear(128*3*3, latent_state_dim) # size: 128*3*3 > latent_state_dim
         self.fc2 = nn.Linear(latent_state_dim, 128*3*3)
-        self.fc3 = nn.Linear(128*3*3, latent_state_dim*latent_act_dim) # 128*3*3=1152 -> 5000 -> 10000 TODO: less than 128*3*3
-        #self.fc4 = nn.Linear(5000, latent_state_dim*latent_act_dim) # TODO: when change latent dim, also change 10000.
+        self.fc3 = nn.Linear(128*3*3, latent_state_dim*latent_state_dim) # K
+        self.fc4 = nn.Linear(128*3*3, latent_state_dim*latent_act_dim) # L
+        
         self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
                                           nn.ReLU(),
                                           nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
@@ -57,11 +58,15 @@ class CAE(nn.Module):
         self.latent_act_dim = latent_act_dim
         self.latent_state_dim = latent_state_dim
 
-    def encoder(self, x):
+    def encoder(self, x, label):
         x = self.conv_layers(x)
         x = x.view(x.shape[0], -1) 
         # return latent state g, and batch numbers of control matrix L.T=f(x), L.T is transpose of L
-        return relu(self.fc1(x)), relu(self.fc3(x)).view(-1, self.latent_act_dim, self.latent_state_dim) 
+        if label == 'pre':
+            return relu(self.fc1(x)), relu(self.fc3(x)).view(-1, self.latent_state_dim, self.latent_state_dim), \
+                relu(self.fc4(x)).view(-1, self.latent_act_dim, self.latent_state_dim) 
+        elif label == 'post':
+            return relu(self.fc1(x))
 
     def decoder(self, x):
         x = relu(self.fc2(x))
@@ -77,10 +82,10 @@ class CAE(nn.Module):
         return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
 
     def forward(self, x_pre, u, x_post):
-        x_pre, L_T = self.encoder(x_pre) 
+        x_pre, K_T, L_T = self.encoder(x_pre, 'pre') 
         u = self.encoder_act(u)  
-        x_post, _ = self.encoder(x_post)     
-        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), L_T#self.control_matrix
+        x_post = self.encoder(x_post, 'post')     
+        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), K_T, L_T#self.control_matrix
 
 
 # def get_latent_U(U):
@@ -107,8 +112,8 @@ def predict():
             img_post = batch_data['image_bi_post']
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # model
-            latent_img_pre, latent_act, _, _, _, L_T = model(img_pre, act, img_post)
-            recon_latent_img_post = get_next_state_linear(latent_img_pre, latent_act, L_T)
+            latent_img_pre, latent_act, _, _, _, K_T, L_T = model(img_pre, act, img_post)
+            recon_latent_img_post = get_next_state_linear(latent_img_pre, latent_act, K_T, L_T)
             recon_img_post = model.decoder(recon_latent_img_post)
             if batch_idx % 10 == 0:
                 n = min(batch_data['image_bi_pre'].size(0), 8)
@@ -129,7 +134,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_linear_trans'
+folder_name = 'test_K_local'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
