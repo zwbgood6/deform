@@ -10,7 +10,7 @@ from torchvision.utils import save_image
 import os
 import math
 class CAE(nn.Module):
-    def __init__(self, latent_state_dim=600, latent_act_dim=150):
+    def __init__(self, latent_state_dim=200, latent_act_dim=50):
         super(CAE, self).__init__()
         # state
         self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
@@ -45,6 +45,7 @@ class CAE(nn.Module):
         self.fc7 = nn.Linear(latent_act_dim, 30) # 10-100
         self.fc8 = nn.Linear(30, 4)  
         # control matrix
+        self.koopman_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_state_dim), requires_grad=True))
         self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True)) # TODO: okay for random initializaion?
         # multiplication/additive to action
         # add these in order to use GPU for parameters
@@ -73,7 +74,7 @@ class CAE(nn.Module):
         x_pre = self.encoder(x_pre) 
         u = self.encoder_act(u)  
         x_post = self.encoder(x_post)     
-        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), self.control_matrix
+        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), self.koopman_matrix, self.control_matrix
 
 # def get_latent_U(U):
 #     U_latent = []           
@@ -85,7 +86,7 @@ class CAE(nn.Module):
 #     d = np.array(U_latent).shape[2] 
 #     return np.resize(np.array(U_latent), (n,d))
 
-def predict(L):
+def predict(K, L):
     model.eval()
     with torch.no_grad():
         for batch_idx, batch_data in enumerate(dataloader):
@@ -99,8 +100,8 @@ def predict(L):
             img_post = batch_data['image_bi_post']
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # model
-            latent_img_pre, latent_act, _, _, _, _ = model(img_pre, act, img_post)
-            recon_latent_img_post = get_next_state(latent_img_pre, latent_act, L)
+            latent_img_pre, latent_act, _, _, _, _, _ = model(img_pre, act, img_post)
+            recon_latent_img_post = get_next_state(latent_img_pre, latent_act, K, L)
             recon_img_post = model.decoder(recon_latent_img_post)
             if batch_idx % 10 == 0:
                 n = min(batch_data['image_bi_pre'].size(0), 8)
@@ -121,7 +122,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'sweep_s600_a150'
+folder_name = 'test_K'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -147,6 +148,12 @@ model.load_state_dict(checkpoint['model_state_dict'])
 # print('***** Load Actions *****')
 # actions = get_U(run_num, total_img_num)
 
+# koopman matrix
+print('***** Load Koopman Matrix *****')
+#L = np.ones((10,5))
+K = np.load('./result/{}/koopman_matrix.npy'.format(folder_name))
+K = torch.tensor(K)
+
 # control matrix
 print('***** Load Control Matrix *****')
 #L = np.ones((10,5))
@@ -158,5 +165,5 @@ print('***** Start Prediction *****')
 step=1
 if not os.path.exists('./result/{}/prediction_full_step{}'.format(folder_name, step)):
     os.makedirs('./result/{}/prediction_full_step{}'.format(folder_name, step))
-predict(L)
+predict(K, L)
 print('***** Finish Prediction *****')

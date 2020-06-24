@@ -16,7 +16,7 @@ import os
 import math
 
 class CAE(nn.Module):
-    def __init__(self, latent_state_dim=500, latent_act_dim=100):
+    def __init__(self, latent_state_dim=200, latent_act_dim=50):
         super(CAE, self).__init__()
         # state
         self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
@@ -296,12 +296,12 @@ resz_act_path = './rope_dataset/rope_all_resize_gray/resize_actions.npy'
 #ori_act_path = './rope_dataset/rope_all_ori/actions.npy'
 resz_act = np.load(resz_act_path)
 #ori_act = np.load(ori_act_path)
-transform = transforms.Compose([Translation(10), 
-                                HFlip(0.5), 
-                                VFlip(0.5), 
-                                ToTensor()])
+# transform = transforms.Compose([Translation(10), 
+#                                 HFlip(0.2), 
+#                                 VFlip(0.2), 
+#                                 ToTensor()])
 #dataset = MyDataset(image_paths_bi, resz_act, transform=ToTensor())
-trainset = MyDataset(image_paths_bi[0:train_num], resz_act[0:train_num], transform=transform)
+trainset = MyDataset(image_paths_bi[0:train_num], resz_act[0:train_num], transform=ToTensor())
 testset = MyDataset(image_paths_bi[train_num:], resz_act[train_num:], transform=ToTensor())
 trainloader = DataLoader(trainset, batch_size=args.batch_size,
                         shuffle=True, num_workers=4, collate_fn=my_collate)

@@ -355,20 +355,20 @@ def save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act
         np.save('./result/{}/control_matrix.npy'.format(folder_name), L)                   
 
 
-epochs = 2000
-folder_name = 'test_linear_trans'
-train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
-train_img = './result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs)
-train_act = './result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs)
-train_latent = './result/{}/train_latent_loss_epoch{}.npy'.format(folder_name, epochs)
-train_pred = './result/{}/train_pred_loss_epoch{}.npy'.format(folder_name, epochs)
+# epochs = 500
+# folder_name = 'test_K'
+# train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
+# train_img = './result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs)
+# train_act = './result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs)
+# train_latent = './result/{}/train_latent_loss_epoch{}.npy'.format(folder_name, epochs)
+# train_pred = './result/{}/train_pred_loss_epoch{}.npy'.format(folder_name, epochs)
 
-test = './result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs)
-test_img = './result/{}/test_img_loss_epoch{}.npy'.format(folder_name, epochs)
-test_act = './result/{}/test_act_loss_epoch{}.npy'.format(folder_name, epochs)
-test_latent = './result/{}/test_latent_loss_epoch{}.npy'.format(folder_name, epochs)
-test_pred = './result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs)
+# test = './result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs)
+# test_img = './result/{}/test_img_loss_epoch{}.npy'.format(folder_name, epochs)
+# test_act = './result/{}/test_act_loss_epoch{}.npy'.format(folder_name, epochs)
+# test_latent = './result/{}/test_latent_loss_epoch{}.npy'.format(folder_name, epochs)
+# test_pred = './result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs)
 
-plot_all_train_loss(train, test, train_img, train_act, train_latent, train_pred, folder_name)
-plot_all_test_loss(test, test_img, test_act, test_latent, test_pred, folder_name)
+# plot_all_train_loss(train, test, train_img, train_act, train_latent, train_pred, folder_name)
+# plot_all_test_loss(test, test_img, test_act, test_latent, test_pred, folder_name)
 
