@@ -16,7 +16,7 @@ import os
 import math
 
 class CAE(nn.Module):
-    def __init__(self, latent_state_dim=100, latent_act_dim=50):
+    def __init__(self, latent_state_dim=50, latent_act_dim=20):
         super(CAE, self).__init__()
         # state
         self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
@@ -109,7 +109,8 @@ def mse(recon_x, x):
     return F.mse_loss(recon_x, x) 
 
 def loss_function_img(recon_img, img):
-    return F.binary_cross_entropy(recon_img.view(-1, 2500), img.view(-1, 2500), reduction='sum')
+    #return F.binary_cross_entropy(recon_img.view(-1, 2500), img.view(-1, 2500), reduction='sum')
+    return F.mse_loss(recon_img.view(-1, 2500), img.view(-1, 2500), reduction='sum')
 
 def loss_function_act(recon_act, act):
     # recon_act = torch.div(recon_act.view(-1, 5)[:,:4], torch.tensor([50, 50, 2*math.pi, 0.14])) + torch.tensor([0,0,0,-1/14])
@@ -137,7 +138,8 @@ def loss_function_latent_linear(latent_img_pre, latent_img_post, latent_action, 
 def loss_function_pred_linear(img_post, latent_img_pre, latent_act, K_T, L_T):
     recon_latent_img_post = get_next_state_linear(latent_img_pre, latent_act, K_T, L_T)
     recon_img_post = model.decoder(recon_latent_img_post) 
-    return F.binary_cross_entropy(recon_img_post.view(-1, 2500), img_post.view(-1, 2500), reduction='sum')
+    #return F.binary_cross_entropy(recon_img_post.view(-1, 2500), img_post.view(-1, 2500), reduction='sum')
+    return F.mse_loss(recon_img_post.view(-1, 2500), img_post.view(-1, 2500), reduction='sum')
 
 # def get_U(action):         
 #     action = action.to(device).float().view(-1, 5) 
