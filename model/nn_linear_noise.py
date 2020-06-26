@@ -52,7 +52,10 @@ class CAE(nn.Module):
         self.fc5 = nn.Linear(4, 30)
         self.fc6 = nn.Linear(30, latent_act_dim) 
         self.fc7 = nn.Linear(latent_act_dim, 30) # 10-100
-        self.fc8 = nn.Linear(30, 4)  
+        self.fc8 = nn.Linear(30, 4)
+        # noise
+        self.fc91 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim)  # mu
+        self.fc92 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim)  # log variance
         # control matrix
         #self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True)) 
         # multiplication/additive to action
@@ -63,15 +66,30 @@ class CAE(nn.Module):
         self.latent_act_dim = latent_act_dim
         self.latent_state_dim = latent_state_dim
 
-    def encoder(self, x, label):
-        x = self.conv_layers(x)
-        x = x.view(x.shape[0], -1) 
+    # def encoder(self, x, label):
+    #     x = self.conv_layers(x)
+    #     x = x.view(x.shape[0], -1) 
+    #     # return latent state g, and batch numbers of control matrix L.T=f(x), L.T is transpose of L
+    #     if label == 'pre':
+    #         return relu(self.fc1(x)), relu(self.fc3(x)).view(-1, self.latent_state_dim, self.latent_state_dim), \
+    #             relu(self.fc4(x)).view(-1, self.latent_act_dim, self.latent_state_dim) 
+    #     elif label == 'post':
+    #         return relu(self.fc1(x))
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.rand_like(std)
+        return mu + eps * std
+
+    def to_noise():
+        # TODO: finish the noise part
+
+    def encoder(self, x_pre, x_post):
+        x_pre, x_post = self.conv_layers(x_pre), self.conv_layers(x_post)
+        x_pre, x_post = x_pre.view(x_pre.shape[0], -1), x_post.view(x_post.shape[0], -1)          
         # return latent state g, and batch numbers of control matrix L.T=f(x), L.T is transpose of L
-        if label == 'pre':
-            return relu(self.fc1(x)), relu(self.fc3(x)).view(-1, self.latent_state_dim, self.latent_state_dim), \
-                relu(self.fc4(x)).view(-1, self.latent_act_dim, self.latent_state_dim) 
-        elif label == 'post':
-            return relu(self.fc1(x))
+        return relu(self.fc1(x_pre)), relu(self.fc1(x_post)), \
+            relu(self.fc3(x_pre)).view(-1, self.latent_state_dim, self.latent_state_dim), \
+            relu(self.fc4(x_pre)).view(-1, self.latent_act_dim, self.latent_state_dim) 
 
     def decoder(self, x):
         x = relu(self.fc2(x))
@@ -86,16 +104,15 @@ class CAE(nn.Module):
         h2 = relu(self.fc7(u))
         return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
 
-    def add_identity(self, K):
-        # add identity matrix to matrix K
-        batch_num, x_len, _ = K.size()       
-        return K + torch.eye(x_len).reshape((1, x_len, x_len)).repeat(batch_num, 1, 1).to(device)
-
     def forward(self, x_pre, u, x_post):
-        x_pre, K_T, L_T = self.encoder(x_pre, 'pre') 
-        u = self.encoder_act(u)  
-        x_post = self.encoder(x_post, 'post')     
-        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), self.add_identity(K_T), L_T#self.control_matrix
+        x_pre, x_post, K_T, L_T = self.encoder(x_pre, x_post) 
+        u = self.encoder_act(u)   
+        # TODO: finish the noise part
+        z = self.to_noise(x_pre, x_post, u)
+        mu = self.fc91(x_pre, x_post, u) 
+        logvar = self.fc92(x_pre, x_post, u)  
+        z = self.reparameterize(mu, logvar)
+        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), K_T, L_T#self.control_matrix
 
 def loss_function(recon_x, x):
     '''
@@ -276,11 +293,11 @@ def test_new(epoch):
 
 # args
 parser = argparse.ArgumentParser(description='CAE Rope Deform Example')
-parser.add_argument('--folder-name', default='test', 
+parser.add_argument('--folder-name', default='test_K_local_ex_small', 
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
+parser.add_argument('--epochs', type=int, default=1000, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
@@ -304,7 +321,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 1000#77944
+total_img_num = 77944
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
@@ -424,106 +441,3 @@ torch.save({
             }, 
             PATH)
 print('***** End Program *****')            
-
-
-# class AE(nn.Module):    
-#     def __init__(self):
-#         super(AE, self).__init__()
-#         self.fc1 = nn.Linear(5, 100)
-#         self.fc2 = nn.Linear(100, 1000) # TODO: add ConV, max pooling, and add layers
-#         self.fc3 = nn.Linear(1000, 100) # 10-100
-#         self.fc4 = nn.Linear(100, 5)  
-
-#     def encoder(self, x):
-#         h1 = relu(self.fc1(x)) # relu -> tanh for all relu's # TODO: relu
-#         return relu(self.fc2(h1))
-
-#     def decoder(self, g):
-#         h2 = relu(self.fc3(g))
-#         return sigmoid(self.fc4(h2))   
-
-#     def forward(self, x):
-#         x = self.encoder(x.view(-1, 5))
-#         return self.decoder(x)  
-
-# def train(model, trainset, epochs, step):   
-#     n = trainset.__len__()
-#     error = []
-#     train_loss_all = []
-#     err_tmp = np.inf
-#     U = get_U(run_num, train_num)
-#     L = None
-#     for epoch in range(epochs):
-#         model.train()
-#         train_loss = 0
-#         for idx in range(n): 
-#             # optimization
-#             optimizer.zero_grad()
-#             # state
-#             data = trainset.__getitem__(idx)
-#             data = data.float().to(device).view(-1, 1, 50, 50)            
-#             # action
-#             action = torch.from_numpy(U[idx]).to(device).float().view(-1, 5)     
-#             #action = model.encoder_act(action).view(-1, 5)
-#             # model
-#             recon_data, recon_act = model(data, action)
-#             # loss 
-#             loss = GAMMA1 * loss_function(recon_data, data) 
-#             loss_act = GAMMA2 * F.mse_loss(recon_act, action) 
-#             loss += loss_act
-#             # # loss of 1->k steps
-#             # if L is not None and idx > 0 and idx < n-step:
-#             #     model.eval()
-#             #     U_latent = get_latent_U(U)
-#             #     loss += GAMMA1 * constraint_loss(step, idx, trainset, U_latent, L)
-#             #     model.train()
-
-#             # loss of all steps
-#             if idx == n-1:
-#                 G = get_G(model, trainset)
-#                 #U = get_U(run_num, train_num)
-#                 U_latent = get_latent_U(U)
-#                 U_latent = U_latent[:-1, :]
-#                 L = get_control_matrix(G, U_latent)
-#                 err_tmp = get_error(G, U_latent, L)
-#                 error.append(err_tmp)
-#                 loss += torch.tensor(err_tmp)#loss_function(recon_data, data) + GAMMA2 * torch.tensor(err_tmp)
-#             loss.backward()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
-#             train_loss += loss.item()
-#             optimizer.step()
-#         # get final control matrix L    
-#         if epoch == epochs-1:
-#             np.save('./result/{}/control_matrix.npy'.format(folder_name), L)  # TODO: unit test    
-#         train_loss = train_loss / n    
-#         train_loss_all.append(train_loss)  
-
-#         # # get final control matrix L  
-#         # if epoch == epochs-1:
-#         #     model.eval()
-#         #     G = get_G(model, trainset)
-#         #     #U = get_U(run_num, train_num)
-#         #     L = get_control_matrix(G, U)
-#         #     np.save('./result/{}/control_matrix.npy'.format(folder_name), L) 
-#         print("epoch : {}/{}, loss = {:.6f}, error = {:.10f}".format(epoch + 1, epochs, train_loss, err_tmp))
-#         # if err_tmp < 1:
-#         #     break
-        
-#         #recon_data = model(data)
-#     return train_loss_all, error
-
-# def test(dataset):
-#     model.eval()
-#     test_loss = 0
-#     n = dataset.__len__()
-#     with torch.no_grad():
-#         for idx in range(n): 
-#             data = dataset.__getitem__(idx)
-#             data = data.float().to(device).view(-1, 1, 50, 50)
-#             recon_data = model.decoder(model.encoder(data))
-#             loss = loss_function(recon_data, data)
-#             test_loss += loss.item()
-#             comparison = recon_data.view(50,50)
-#             save_image(comparison.cpu(), './result/{}/reconstruction/reconstruct_'.format(folder_name) + str(idx) + '.png')
-#     test_loss /= n
-#     print('Test set loss: {:.4f}'.format(test_loss))
-#     return test_loss

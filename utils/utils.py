@@ -355,7 +355,7 @@ def save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act
         np.save('./result/{}/control_matrix.npy'.format(folder_name), L)                   
 
 
-# epochs = 500
+# epochs = 1000
 # folder_name = 'test_K_local_small'
 # train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
 # train_img = './result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs)
