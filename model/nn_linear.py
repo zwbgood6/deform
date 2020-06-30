@@ -95,7 +95,7 @@ class CAE(nn.Module):
         x_pre, K_T, L_T = self.encoder(x_pre, 'pre') 
         u = self.encoder_act(u)  
         x_post = self.encoder(x_post, 'post')     
-        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), self.add_identity(K_T), L_T#self.control_matrix
+        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), K_T, L_T#self.control_matrix
 
 def loss_function(recon_x, x):
     '''
@@ -276,11 +276,11 @@ def test_new(epoch):
 
 # args
 parser = argparse.ArgumentParser(description='CAE Rope Deform Example')
-parser.add_argument('--folder-name', default='test', 
+parser.add_argument('--folder-name', default='test_K_local_I', 
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
+parser.add_argument('--epochs', type=int, default=1000, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
@@ -304,7 +304,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 1000#77944
+total_img_num = 77944
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
@@ -341,6 +341,7 @@ print('***** Start Training & Testing *****')
 device = torch.device("cuda" if args.cuda else "cpu")
 epochs = args.epochs
 model = CAE().to(device)
+#torch.cuda.empty_cache()
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 #optimizer = optim.SGD(model.parameters(), lr=1e-3)
 

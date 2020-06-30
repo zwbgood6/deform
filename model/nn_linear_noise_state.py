@@ -1,4 +1,4 @@
-# noise from both the two states and action
+# noise from both the two states only
 from __future__ import print_function
 import argparse
 
@@ -56,8 +56,8 @@ class CAE(nn.Module):
         self.fc7 = nn.Linear(latent_act_dim, 30) # 10-100
         self.fc8 = nn.Linear(30, 4)
         # noise
-        self.fc91 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim)  # mu
-        self.fc92 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim)  # log variance
+        self.fc91 = nn.Linear(latent_state_dim * 2, latent_state_dim)  # mu
+        self.fc92 = nn.Linear(latent_state_dim * 2, latent_state_dim)  # log variance
         # control matrix
         #self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True)) 
         # multiplication/additive to action
@@ -82,12 +82,12 @@ class CAE(nn.Module):
         eps = torch.rand_like(std)
         return mu + eps * std
 
-    def to_noise(self, g_pre, g_post, a):
+    def to_noise(self, g_pre, g_post):
         # g_pre: previous latent state; g_post: post latent state; a: latent action
         # TODO: finish the noise part
-        gag = torch.cat((g_pre, g_post, a), dim=1)
-        mu = self.fc91(gag) 
-        logvar = self.fc92(gag)  
+        gg = torch.cat((g_pre, g_post), dim=1)
+        mu = self.fc91(gg) 
+        logvar = self.fc92(gg)  
         return self.reparameterize(mu, logvar), mu, logvar
 
     def encoder(self, x_pre, x_post):
@@ -114,7 +114,7 @@ class CAE(nn.Module):
     def forward(self, x_pre, u, x_post):
         x_pre, x_post, K_T, L_T = self.encoder(x_pre, x_post) 
         u = self.encoder_act(u)   
-        z, mu, logvar = self.to_noise(x_pre, x_post, u)
+        z, mu, logvar = self.to_noise(x_pre, x_post)
         return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), K_T, L_T, z, mu, logvar#self.control_matrix
 
 def loss_function(recon_x, x):
@@ -307,7 +307,7 @@ def test_new(epoch):
 
 # args
 parser = argparse.ArgumentParser(description='CAE Rope Deform Example')
-parser.add_argument('--folder-name', default='test_K_local_noise', 
+parser.add_argument('--folder-name', default='test_K_local_noise_state', 
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
@@ -317,10 +317,10 @@ parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
 parser.add_argument('--gamma-lat', type=int, default=900, metavar='N',
                     help='scale coefficient for loss of latent dynamics (default: 150*6)')     
-parser.add_argument('--gamma-pred', type=int, default=2, metavar='N',
+parser.add_argument('--gamma-pred', type=int, default=3, metavar='N',
                     help='scale coefficient for loss of prediction (default: 3)')   
-parser.add_argument('--gamma-kld', type=int, default=1, metavar='N',
-                    help='scale coefficient for loss of KL divergence (default: 1)')                                                                             
+parser.add_argument('--gamma-kld', type=int, default=50, metavar='N',
+                    help='scale coefficient for loss of KL divergence (default: 5)')                                                                             
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
 parser.add_argument('--math', default=False,

@@ -130,7 +130,7 @@ def get_next_state(latent_image_pre, latent_action, K, L):
     #print('K size:', K.size())
     return latent_image_pre.mm(K.t().to(device)) + latent_action.mm(L.t().to(device))
 
-def get_next_state_linear(latent_image_pre, latent_action, K_T, L_T):
+def get_next_state_linear(latent_image_pre, latent_action, K_T, L_T, z=None):
     '''
     latent_image_pre: (batch_size, latent_state_dim)
     latent_action: (batch_size, latent_act_dim)
@@ -138,8 +138,12 @@ def get_next_state_linear(latent_image_pre, latent_action, K_T, L_T):
     '''
     # latent_action.shape[0] is batch size
     # latent_state_incremental = (torch.matmul(latent_action.view(latent_action.shape[0], 1, -1), L_T)).view(latent_action.shape[0], -1)
-    return (torch.matmul(latent_image_pre.view(latent_image_pre.shape[0], 1, -1), K_T)).view(latent_image_pre.shape[0], -1) + \
-        (torch.matmul(latent_action.view(latent_action.shape[0], 1, -1), L_T)).view(latent_action.shape[0], -1)
+    if z is not None:
+        return (torch.matmul(latent_image_pre.view(latent_image_pre.shape[0], 1, -1), K_T)).view(latent_image_pre.shape[0], -1) + \
+            (torch.matmul(latent_action.view(latent_action.shape[0], 1, -1), L_T)).view(latent_action.shape[0], -1) + z.to(device)
+    else:
+        return (torch.matmul(latent_image_pre.view(latent_image_pre.shape[0], 1, -1), K_T)).view(latent_image_pre.shape[0], -1) + \
+            (torch.matmul(latent_action.view(latent_action.shape[0], 1, -1), L_T)).view(latent_action.shape[0], -1)         
 
 def get_step_error(embedded_state, action, L, ):
     '''get error with certain steps in latent space 
