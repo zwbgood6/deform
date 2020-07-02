@@ -56,8 +56,10 @@ class CAE(nn.Module):
         self.fc7 = nn.Linear(latent_act_dim, 30) # 10-100
         self.fc8 = nn.Linear(30, 4)
         # noise
-        self.fc91 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim)  # mu
-        self.fc92 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim)  # log variance
+        self.fc91 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim + latent_act_dim)  # mu
+        self.fc92 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim + latent_act_dim)  # log variance
+        self.fc101 = nn.Linear(latent_state_dim + latent_act_dim, latent_state_dim)  # mu
+        self.fc102 = nn.Linear(latent_state_dim + latent_act_dim, latent_state_dim)  # log variance        
         # control matrix
         #self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True)) 
         # multiplication/additive to action
@@ -79,15 +81,15 @@ class CAE(nn.Module):
     #         return relu(self.fc1(x))
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
-        eps = torch.rand_like(std)
+        eps = torch.rand_like(std) # TODO: normal distirbution for eps
         return mu + eps * std
 
     def to_noise(self, g_pre, g_post, a):
         # g_pre: previous latent state; g_post: post latent state; a: latent action
         # TODO: finish the noise part
         gag = torch.cat((g_pre, g_post, a), dim=1)
-        mu = self.fc91(gag) 
-        logvar = self.fc92(gag)  
+        mu = self.fc101(relu(self.fc91(gag))) 
+        logvar = self.fc102(relu(self.fc92(gag)))  
         return self.reparameterize(mu, logvar), mu, logvar
 
     def encoder(self, x_pre, x_post):
@@ -307,20 +309,20 @@ def test_new(epoch):
 
 # args
 parser = argparse.ArgumentParser(description='CAE Rope Deform Example')
-parser.add_argument('--folder-name', default='test_K_local_noise', 
+parser.add_argument('--folder-name', default='test', 
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=500, metavar='N',
+parser.add_argument('--epochs', type=int, default=5, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
 parser.add_argument('--gamma-lat', type=int, default=900, metavar='N',
                     help='scale coefficient for loss of latent dynamics (default: 150*6)')     
 parser.add_argument('--gamma-pred', type=int, default=2, metavar='N',
-                    help='scale coefficient for loss of prediction (default: 3)')   
-parser.add_argument('--gamma-kld', type=int, default=1, metavar='N',
-                    help='scale coefficient for loss of KL divergence (default: 1)')                                                                             
+                    help='scale coefficient for loss of prediction (default: 2)')   
+parser.add_argument('--gamma-kld', type=int, default=10, metavar='N',
+                    help='scale coefficient for loss of KL divergence (default: 10)')                                                                             
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
 parser.add_argument('--math', default=False,
@@ -337,7 +339,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 77944
+total_img_num = 1000#77944
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
