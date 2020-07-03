@@ -88,8 +88,8 @@ class CAE(nn.Module):
         # g_pre: previous latent state; g_post: post latent state; a: latent action
         # TODO: finish the noise part
         gag = torch.cat((g_pre, g_post, a), dim=1)
-        mu = self.fc101(relu(self.fc91(gag))) 
-        logvar = self.fc102(relu(self.fc92(gag)))  
+        mu = self.fc101(tanh(self.fc91(gag))) 
+        logvar = self.fc102(tanh(self.fc92(gag)))  
         return self.reparameterize(mu, logvar), mu, logvar
 
     def encoder(self, x_pre, x_post):
@@ -313,7 +313,7 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=5, metavar='N',
+parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   

@@ -50,8 +50,10 @@ class CAE(nn.Module):
         self.fc7 = nn.Linear(latent_act_dim, 30) # 10-100
         self.fc8 = nn.Linear(30, 4)
         # noise
-        self.fc91 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim)  # mu
-        self.fc92 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim)  # log variance
+        self.fc91 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim + latent_act_dim)  # mu
+        self.fc92 = nn.Linear(latent_state_dim * 2 + latent_act_dim, latent_state_dim + latent_act_dim)  # log variance
+        self.fc101 = nn.Linear(latent_state_dim + latent_act_dim, latent_state_dim)  # mu
+        self.fc102 = nn.Linear(latent_state_dim + latent_act_dim, latent_state_dim)  # log variance        
         # control matrix
         #self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True)) 
         # multiplication/additive to action
@@ -73,15 +75,15 @@ class CAE(nn.Module):
     #         return relu(self.fc1(x))
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
-        eps = torch.rand_like(std)
+        eps = torch.rand_like(std) # TODO: normal distirbution for eps
         return mu + eps * std
 
     def to_noise(self, g_pre, g_post, a):
         # g_pre: previous latent state; g_post: post latent state; a: latent action
         # TODO: finish the noise part
         gag = torch.cat((g_pre, g_post, a), dim=1)
-        mu = self.fc91(gag) 
-        logvar = self.fc92(gag)  
+        mu = self.fc101(relu(self.fc91(gag))) 
+        logvar = self.fc102(relu(self.fc92(gag)))  
         return self.reparameterize(mu, logvar), mu, logvar
 
     def encoder(self, x_pre, x_post):
@@ -161,7 +163,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_K_local_noise'
+folder_name = 'test_K_local_noise_kld50'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
