@@ -81,15 +81,16 @@ class CAE(nn.Module):
     #         return relu(self.fc1(x))
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
-        eps = torch.rand_like(std) # TODO: normal distirbution for eps
+        eps = torch.normal(0.0, 1.0, size=std.size()).to(device) # normal distirbution for eps
+        #eps = torch.rand_like(std)
         return mu + eps * std
 
     def to_noise(self, g_pre, g_post, a):
         # g_pre: previous latent state; g_post: post latent state; a: latent action
         # TODO: finish the noise part
         gag = torch.cat((g_pre, g_post, a), dim=1)
-        mu = self.fc101(tanh(self.fc91(gag))) 
-        logvar = self.fc102(tanh(self.fc92(gag)))  
+        mu = self.fc101(relu(self.fc91(gag)))
+        logvar = self.fc102(relu(self.fc92(gag)))
         return self.reparameterize(mu, logvar), mu, logvar
 
     def encoder(self, x_pre, x_post):
@@ -277,9 +278,11 @@ def test_new(epoch):
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # model
             latent_img_pre, latent_act, latent_img_post, recon_img_pre, recon_act, K_T, L_T, _, mu, logvar = model(img_pre, act, img_post)
-            dist = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
-            batch_num, x_len, _ = K_T.size() 
-            z = dist.expand(torch.tensor([x_len])).sample(sample_shape=torch.Size([batch_num]))
+            # normal dist for noise z
+            z = torch.normal(0.0, 1.0, size=latent_img_pre.size()).to(device)
+            #dist = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
+            #batch_num, x_len, _ = K_T.size() 
+            #z = dist.expand(torch.tensor([x_len])).sample(sample_shape=torch.Size([batch_num]))
             # loss
             loss_img = loss_function_img(recon_img_pre, img_pre)
             loss_act = loss_function_act(recon_act, act)

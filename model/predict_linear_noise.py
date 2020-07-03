@@ -82,8 +82,8 @@ class CAE(nn.Module):
         # g_pre: previous latent state; g_post: post latent state; a: latent action
         # TODO: finish the noise part
         gag = torch.cat((g_pre, g_post, a), dim=1)
-        mu = self.fc101(relu(self.fc91(gag))) 
-        logvar = self.fc102(relu(self.fc92(gag)))  
+        mu = self.fc101(tanh(self.fc91(gag))) 
+        logvar = self.fc102(tanh(self.fc92(gag)))  
         return self.reparameterize(mu, logvar), mu, logvar
 
     def encoder(self, x_pre, x_post):
@@ -139,9 +139,10 @@ def predict():
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # model
             latent_img_pre, latent_act, _, _, _, K_T, L_T, _, _, _ = model(img_pre, act, img_post)
-            dist = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
-            batch_num, x_len, _ = K_T.size() 
-            z = dist.expand(torch.tensor([x_len])).sample(sample_shape=torch.Size([batch_num]))
+            z = torch.normal(0.0, 1.0, size=latent_img_pre.size()).to(device)
+            #dist = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
+            #batch_num, x_len, _ = K_T.size() 
+            #z = dist.expand(torch.tensor([x_len])).sample(sample_shape=torch.Size([batch_num]))
             recon_latent_img_post = get_next_state_linear(latent_img_pre, latent_act, K_T, L_T, z)
             recon_img_post = model.decoder(recon_latent_img_post)
             if batch_idx % 10 == 0:
@@ -154,7 +155,7 @@ def predict():
 
 
 print('***** Preparing Data *****')
-total_img_num = 77944
+total_img_num = 1000#77944
 image_paths_bi = create_image_path('rope_all_resize_gray', total_img_num)
 action_path = './rope_dataset/rope_all_resize_gray/resize_actions.npy'
 actions = np.load(action_path)
@@ -163,7 +164,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_K_local_noise_kld50'
+folder_name = 'test'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
