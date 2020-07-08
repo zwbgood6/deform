@@ -75,15 +75,16 @@ class CAE(nn.Module):
     #         return relu(self.fc1(x))
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
-        eps = torch.rand_like(std) # TODO: normal distirbution for eps
+        eps = torch.normal(0.0, 1.0, size=std.size()).to(device) # normal distirbution for eps
+        #eps = torch.rand_like(std)
         return mu + eps * std
 
     def to_noise(self, g_pre, g_post, a):
         # g_pre: previous latent state; g_post: post latent state; a: latent action
         # TODO: finish the noise part
         gag = torch.cat((g_pre, g_post, a), dim=1)
-        mu = self.fc101(tanh(self.fc91(gag))) 
-        logvar = self.fc102(tanh(self.fc92(gag)))  
+        mu = self.fc101(relu(self.fc91(gag)))
+        logvar = self.fc102(relu(self.fc92(gag)))
         return self.reparameterize(mu, logvar), mu, logvar
 
     def encoder(self, x_pre, x_post):
@@ -128,26 +129,42 @@ def predict():
     model.eval()
     with torch.no_grad():
         for batch_idx, batch_data in enumerate(dataloader):
-            # image before action
+            # order: img_pre -> act_pre -> img_cur -> act_cur -> img_post
+            # previous image 
             img_pre = batch_data['image_bi_pre']
             img_pre = img_pre.float().to(device).view(-1, 1, 50, 50)
-            # action
-            act = batch_data['resz_action']
-            act = act.float().to(device).view(-1, 4)
-            # image after action
+            # previous action
+            act_pre = batch_data['resz_action_pre']
+            act_pre = act_pre.float().to(device).view(-1, 4)
+            # current image 
+            img_cur = batch_data['image_bi_cur']
+            img_cur = img_cur.float().to(device).view(-1, 1, 50, 50) 
+            # current action
+            act_cur = batch_data['resz_action_cur']
+            act_cur = act_cur.float().to(device).view(-1, 4)
+            # post image
             img_post = batch_data['image_bi_post']
-            img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
-            # model
-            latent_img_pre, latent_act, _, _, _, K_T, L_T, _, _, _ = model(img_pre, act, img_post)
-            z = torch.normal(0.0, 1.0, size=latent_img_pre.size()).to(device)
+            img_post = img_post.float().to(device).view(-1, 1, 50, 50)
+            # noise
+            #z = torch.normal(0.0, 1.0, size=latent_img_cur.size()).to(device)
             #dist = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
             #batch_num, x_len, _ = K_T.size() 
-            #z = dist.expand(torch.tensor([x_len])).sample(sample_shape=torch.Size([batch_num]))
-            recon_latent_img_post = get_next_state_linear(latent_img_pre, latent_act, K_T, L_T, z)
-            recon_img_post = model.decoder(recon_latent_img_post)
+            #z = dist.expand(torch.tensor([x_len])).sample(sample_shape=torch.Size([batch_num]))            
+            # prediction for current image
+            latent_img_pre, latent_act_pre, _, _, _, K_T_pre, L_T_pre, _, _, _ = model(img_pre, act_pre, img_cur)
+            z_pre = torch.normal(0.0, 1.0, size=latent_img_pre.size()).to(device)
+            recon_latent_img_cur = get_next_state_linear(latent_img_pre, latent_act_pre, K_T_pre, L_T_pre, z_pre)
+            recon_img_cur = model.decoder(recon_latent_img_cur)
+            # prediction for post image
+            latent_img_cur, latent_act_cur, _, _, _, K_T_cur, L_T_cur, _, _, _ = model(img_cur, act_cur, img_post)
+            z_cur = torch.normal(0.0, 1.0, size=latent_img_cur.size()).to(device)
+            recon_latent_img_post = get_next_state_linear(latent_img_cur, latent_act_cur, K_T_cur, L_T_cur, z_cur)
+            recon_img_post = model.decoder(recon_latent_img_post)                           
             if batch_idx % 10 == 0:
                 n = min(batch_data['image_bi_pre'].size(0), 8)
                 comparison = torch.cat([batch_data['image_bi_pre'][:n],
+                                        batch_data['image_bi_cur'][:n],
+                                        recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],
                                         batch_data['image_bi_post'][:n],
                                         recon_img_post.view(-1, 1, 50, 50).cpu()[:n]])
                 save_image(comparison.cpu(),

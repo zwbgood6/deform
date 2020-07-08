@@ -206,11 +206,11 @@ def train_new(epoch):
     pred_loss = 0
     kld_loss = 0
     for batch_idx, batch_data in enumerate(trainloader):
-        # image before action
-        img_pre = batch_data['image_bi_pre']
-        img_pre = img_pre.float().to(device).view(-1, 1, 50, 50)
+        # current image before action
+        img_cur = batch_data['image_bi_cur']
+        img_cur = img_cur.float().to(device).view(-1, 1, 50, 50)
         # action
-        act = batch_data['resz_action']
+        act = batch_data['resz_action_cur']
         act = act.float().to(device).view(-1, 4)
         # image after action
         img_post = batch_data['image_bi_post']
@@ -218,12 +218,12 @@ def train_new(epoch):
         # optimization
         optimizer.zero_grad()
         # model
-        latent_img_pre, latent_act, latent_img_post, recon_img_pre, recon_act, K_T, L_T, z, mu, logvar = model(img_pre, act, img_post)
+        latent_img_cur, latent_act, latent_img_post, recon_img_cur, recon_act, K_T, L_T, _, mu, logvar = model(img_cur, act, img_post)
         # loss
-        loss_img = loss_function_img(recon_img_pre, img_pre)
+        loss_img = loss_function_img(recon_img_cur, img_cur)
         loss_act = loss_function_act(recon_act, act)
-        loss_latent = loss_function_latent_linear(latent_img_pre, latent_img_post, latent_act, K_T, L_T, z) # TODO: add prediction loss, decode the latent state to predicted state     
-        loss_predict = loss_function_pred_linear(img_post, latent_img_pre, latent_act, K_T, L_T, z)
+        loss_latent = loss_function_latent_linear(latent_img_cur, latent_img_post, latent_act, K_T, L_T) # TODO: add prediction loss, decode the latent state to predicted state     
+        loss_predict = loss_function_pred_linear(img_post, latent_img_cur, latent_act, K_T, L_T)
         loss_kld = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
         loss = loss_img + GAMMA_act * loss_act + GAMMA_latent * loss_latent + GAMMA_pred * loss_predict + GAMMA_kld * loss_kld
         loss.backward()
@@ -237,19 +237,19 @@ def train_new(epoch):
         optimizer.step()
         if batch_idx % 5 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(batch_data['image_bi_pre']), len(trainloader.dataset),
+                epoch, batch_idx * len(batch_data['image_bi_cur']), len(trainloader.dataset),
                 100. * batch_idx / len(trainloader),
-                loss.item() / len(batch_data['image_bi_pre'])))    
+                loss.item() / len(batch_data['image_bi_cur'])))    
         # reconstruction
         if batch_idx == 0:
-            n = min(batch_data['image_bi_pre'].size(0), 8)
-            comparison = torch.cat([batch_data['image_bi_pre'][:n],
-                                  recon_img_pre.view(-1, 1, 50, 50).cpu()[:n]]) 
+            n = min(batch_data['image_bi_cur'].size(0), 8)
+            comparison = torch.cat([batch_data['image_bi_cur'][:n],
+                                  recon_img_cur.view(-1, 1, 50, 50).cpu()[:n]]) 
             save_image(comparison.cpu(),
                      './result/{}/reconstruction_train/reconstruct_epoch_{}.png'.format(folder_name, epoch), nrow=n)      
-            plot_sample(batch_data['image_bi_pre'][:n].detach().cpu().numpy(), 
+            plot_sample(batch_data['image_bi_cur'][:n].detach().cpu().numpy(), 
                         batch_data['image_bi_post'][:n].detach().cpu().numpy(), 
-                        batch_data['resz_action'][:n].detach().cpu().numpy(), 
+                        batch_data['resz_action_cur'][:n].detach().cpu().numpy(), 
                         recon_act.view(-1, 4)[:n].detach().cpu().numpy(), 
                         './result/{}/reconstruction_act_train/recon_epoch_{}.png'.format(folder_name, epoch))  
     print('====> Epoch: {} Average loss: {:.4f}'.format(
@@ -267,27 +267,27 @@ def test_new(epoch):
     kld_loss = 0 
     with torch.no_grad():
         for batch_idx, batch_data in enumerate(testloader):
-            # image before action
-            img_pre = batch_data['image_bi_pre']
-            img_pre = img_pre.float().to(device).view(-1, 1, 50, 50)
-            # action
-            act = batch_data['resz_action']
+            # current image before current action
+            img_cur = batch_data['image_bi_cur']
+            img_cur = img_cur.float().to(device).view(-1, 1, 50, 50)
+            # current action
+            act = batch_data['resz_action_cur']
             act = act.float().to(device).view(-1, 4)
             # image after action
             img_post = batch_data['image_bi_post']
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # model
-            latent_img_pre, latent_act, latent_img_post, recon_img_pre, recon_act, K_T, L_T, _, mu, logvar = model(img_pre, act, img_post)
+            latent_img_cur, latent_act, latent_img_post, recon_img_cur, recon_act, K_T, L_T, _, mu, logvar = model(img_cur, act, img_post)
             # normal dist for noise z
-            z = torch.normal(0.0, 1.0, size=latent_img_pre.size()).to(device)
+            z = torch.normal(0.0, 1.0, size=latent_img_cur.size()).to(device)
             #dist = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
             #batch_num, x_len, _ = K_T.size() 
             #z = dist.expand(torch.tensor([x_len])).sample(sample_shape=torch.Size([batch_num]))
             # loss
-            loss_img = loss_function_img(recon_img_pre, img_pre)
+            loss_img = loss_function_img(recon_img_cur, img_cur)
             loss_act = loss_function_act(recon_act, act)
-            loss_latent = loss_function_latent_linear(latent_img_pre, latent_img_post, latent_act, K_T, L_T, z)
-            loss_predict = loss_function_pred_linear(img_post, latent_img_pre, latent_act, K_T, L_T, z)
+            loss_latent = loss_function_latent_linear(latent_img_cur, latent_img_post, latent_act, K_T, L_T, z)
+            loss_predict = loss_function_pred_linear(img_post, latent_img_cur, latent_act, K_T, L_T, z)
             loss_kld = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
             loss = loss_img + GAMMA_act * loss_act + GAMMA_latent * loss_latent + GAMMA_pred * loss_predict + GAMMA_kld * loss_kld
             test_loss += loss.item()
@@ -297,14 +297,14 @@ def test_new(epoch):
             pred_loss += GAMMA_pred * loss_predict.item()
             kld_loss += GAMMA_kld * loss_kld.item()            
             if batch_idx == 0:
-                n = min(batch_data['image_bi_pre'].size(0), 8)
-                comparison = torch.cat([batch_data['image_bi_pre'][:n],
-                                      recon_img_pre.view(-1, 1, 50, 50).cpu()[:n]])
+                n = min(batch_data['image_bi_cur'].size(0), 8)
+                comparison = torch.cat([batch_data['image_bi_cur'][:n],
+                                      recon_img_cur.view(-1, 1, 50, 50).cpu()[:n]])
                 save_image(comparison.cpu(),
                          './result/{}/reconstruction_test/reconstruct_epoch_{}.png'.format(folder_name, epoch), nrow=n)                                         
-                plot_sample(batch_data['image_bi_pre'][:n].detach().cpu().numpy(), 
+                plot_sample(batch_data['image_bi_cur'][:n].detach().cpu().numpy(), 
                             batch_data['image_bi_post'][:n].detach().cpu().numpy(), 
-                            batch_data['resz_action'][:n].detach().cpu().numpy(), 
+                            batch_data['resz_action_cur'][:n].detach().cpu().numpy(), 
                             recon_act.view(-1, 4)[:n].detach().cpu().numpy(), 
                             './result/{}/reconstruction_act_test/recon_epoch_{}.png'.format(folder_name, epoch))                           
     n = len(testloader.dataset)
@@ -417,9 +417,9 @@ for epoch in range(init_epoch, epochs+1):
     test_kld_loss_all.append(test_kld_loss)
     if epoch % args.log_interval == 0:
         save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act_loss_all,
-                  train_latent_loss_all, train_pred_loss_all, train_kld_loss_all, test_loss_all, 
+                  train_latent_loss_all, train_pred_loss_all, test_loss_all, 
                   test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_pred_loss_all, 
-                  test_kld_loss_all, None, None)
+                  train_kld_loss_all, test_kld_loss_all, None, None)
         # save checkpoint
         PATH = './result/{}/checkpoint'.format(folder_name)
         loss_logger = {'train_loss_all': train_loss_all, 'train_img_loss_all': train_img_loss_all, 
@@ -437,9 +437,9 @@ for epoch in range(init_epoch, epochs+1):
                     PATH)
 
 save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act_loss_all,
-          train_latent_loss_all, train_pred_loss_all, train_kld_loss_all, test_loss_all, 
+          train_latent_loss_all, train_pred_loss_all, test_loss_all, 
           test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_pred_loss_all, 
-          test_kld_loss_all, None, None)
+          train_kld_loss_all, test_kld_loss_all, None, None)
 
 # plot
 plot_train_loss('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)

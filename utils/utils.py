@@ -3,7 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import os
 
-def create_loss_list(loss_logger):
+def create_loss_list(loss_logger, kld=True):
     if loss_logger is None:
         train_loss_all = []
         train_img_loss_all = []
@@ -15,21 +15,25 @@ def create_loss_list(loss_logger):
         test_img_loss_all = []
         test_act_loss_all = []
         test_latent_loss_all = []
-        test_pred_loss_all = []
+        test_pred_loss_all = []            
         test_kld_loss_all = []
     else:
         train_loss_all = loss_logger['train_loss_all']
         train_img_loss_all = loss_logger['train_img_loss_all']
         train_act_loss_all = loss_logger['train_act_loss_all']
         train_latent_loss_all = loss_logger['train_latent_loss_all']
-        train_pred_loss_all = loss_logger['train_pred_loss_all']
-        train_kld_loss_all = loss_logger['train_kld_loss_all']
+        train_pred_loss_all = loss_logger['train_pred_loss_all']       
         test_loss_all = loss_logger['test_loss_all']
         test_img_loss_all = loss_logger['test_img_loss_all']
         test_act_loss_all = loss_logger['test_act_loss_all']
         test_latent_loss_all = loss_logger['test_latent_loss_all']
-        test_pred_loss_all = loss_logger['test_pred_loss_all'] 
-        test_kld_loss_all = loss_logger['test_kld_loss_all']
+        test_pred_loss_all = loss_logger['test_pred_loss_all']         
+        if kld is True:
+            train_kld_loss_all = loss_logger['train_kld_loss_all']
+            test_kld_loss_all = loss_logger['test_kld_loss_all']
+        else:
+            train_kld_loss_all = []
+            test_kld_loss_all = []                
     return train_loss_all, train_img_loss_all, train_act_loss_all, train_latent_loss_all, train_pred_loss_all, train_kld_loss_all, \
            test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_pred_loss_all, test_kld_loss_all    
 
@@ -320,7 +324,7 @@ def plot_test_kld_loss(file_name, folder_name):
 #     for file_name in file_names:
 
 
-def plot_all_train_loss(train, test, img, act, latent, pred, kld, folder_name):
+def plot_all_train_loss_with_noise(train, test, img, act, latent, pred, kld, folder_name):
     train_loss = np.load(train)#[10:]
     test_loss = np.load(test)#[10:]
     img_loss = np.load(img)#[10:]
@@ -343,7 +347,7 @@ def plot_all_train_loss(train, test, img, act, latent, pred, kld, folder_name):
     plt.savefig('./result/{}/plot/all_train_loss.png'.format(folder_name))
     plt.close()
 
-def plot_all_test_loss(test, img, act, latent, pred, kld, folder_name):
+def plot_all_test_loss_with_noise(test, img, act, latent, pred, kld, folder_name):
     test_loss = np.load(test)#[20:]
     img_loss = np.load(img)#[20:]
     act_loss = np.load(act)#[20:]
@@ -364,44 +368,94 @@ def plot_all_test_loss(test, img, act, latent, pred, kld, folder_name):
     plt.savefig('./result/{}/plot/all_test_loss.png'.format(folder_name))
     plt.close()
 
+def plot_all_train_loss_without_noise(train, test, img, act, latent, pred, folder_name):
+    train_loss = np.load(train)#[10:]
+    test_loss = np.load(test)#[10:]
+    img_loss = np.load(img)#[10:]
+    act_loss = np.load(act)#[10:]
+    latent_loss = np.load(latent)#[10:]
+    pred_loss = np.load(pred)#[10:]
+    plt.figure()
+    train_curve, = plt.plot(train_loss, label='Train')
+    test_curve, = plt.plot(test_loss, label='Test')
+    img_curve, = plt.plot(img_loss, label='Image')
+    act_curve, = plt.plot(act_loss, label='Action')
+    latent_curve, = plt.plot(latent_loss, label='Latent')
+    pred_curve, = plt.plot(pred_loss, label='Prediction')
+    plt.title('Train loss and its subcomponents')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend([train_curve, test_curve, img_curve, act_curve, latent_curve, pred_curve], ['Train', 'Test', 'Image', 'Action', 'Latent', 'Prediction'])
+    plt.savefig('./result/{}/plot/all_train_loss.png'.format(folder_name))
+    plt.close()
+
+def plot_all_test_loss_without_noise(test, img, act, latent, pred, folder_name):
+    test_loss = np.load(test)#[20:]
+    img_loss = np.load(img)#[20:]
+    act_loss = np.load(act)#[20:]
+    latent_loss = np.load(latent)#[20:]
+    pred_loss = np.load(pred)#[20:]
+    plt.figure()
+    test_curve, = plt.plot(test_loss, label='Test')
+    img_curve, = plt.plot(img_loss, label='Image')
+    act_curve, = plt.plot(act_loss, label='Action')
+    latent_curve, = plt.plot(latent_loss, label='Latent')
+    pred_curve, = plt.plot(pred_loss, label='Prediction')
+    plt.title('Test loss and its subcomponents')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend([test_curve, img_curve, act_curve, latent_curve, pred_curve], ['Test', 'Image', 'Action', 'Latent', 'Prediction'])
+    plt.savefig('./result/{}/plot/all_test_loss.png'.format(folder_name))
+    plt.close()
+
 def save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act_loss_all,
-              train_latent_loss_all, train_pred_loss_all, train_kld_loss_all, 
+              train_latent_loss_all, train_pred_loss_all, 
               test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, 
-              test_pred_loss_all, test_kld_loss_all, K=None, L=None):
+              test_pred_loss_all, train_kld_loss_all=None, test_kld_loss_all=None, K=None, L=None):
     np.save('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), train_loss_all)
     np.save('./result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs), train_img_loss_all)
     np.save('./result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs), train_act_loss_all)
     np.save('./result/{}/train_latent_loss_epoch{}.npy'.format(folder_name, epochs), train_latent_loss_all)
     np.save('./result/{}/train_pred_loss_epoch{}.npy'.format(folder_name, epochs), train_pred_loss_all)
-    np.save('./result/{}/train_kld_loss_epoch{}.npy'.format(folder_name, epochs), train_kld_loss_all)
     np.save('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), test_loss_all)
     np.save('./result/{}/test_img_loss_epoch{}.npy'.format(folder_name, epochs), test_img_loss_all)
     np.save('./result/{}/test_act_loss_epoch{}.npy'.format(folder_name, epochs), test_act_loss_all)
     np.save('./result/{}/test_latent_loss_epoch{}.npy'.format(folder_name, epochs), test_latent_loss_all)
-    np.save('./result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs), test_pred_loss_all) 
-    np.save('./result/{}/test_kld_loss_epoch{}.npy'.format(folder_name, epochs), test_kld_loss_all)       
+    np.save('./result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs), test_pred_loss_all)          
+    if train_kld_loss_all is not None:
+        np.save('./result/{}/train_kld_loss_epoch{}.npy'.format(folder_name, epochs), train_kld_loss_all)
+    if test_kld_loss_all is not None:
+        np.save('./result/{}/test_kld_loss_epoch{}.npy'.format(folder_name, epochs), test_kld_loss_all) 
     if K is not None:
         np.save('./result/{}/koopman_matrix.npy'.format(folder_name), K)   
     if L is not None:
         np.save('./result/{}/control_matrix.npy'.format(folder_name), L)                   
 
 
-epochs = 1000
-folder_name = 'test_K_local_noise_kld50'
+epochs = 10
+folder_name = 'test'
+noise = False # consider whether adding noise in the latent dynamics
+
 train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
 train_img = './result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs)
 train_act = './result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs)
 train_latent = './result/{}/train_latent_loss_epoch{}.npy'.format(folder_name, epochs)
 train_pred = './result/{}/train_pred_loss_epoch{}.npy'.format(folder_name, epochs)
-train_kld = './result/{}/train_kld_loss_epoch{}.npy'.format(folder_name, epochs)
 
 test = './result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs)
 test_img = './result/{}/test_img_loss_epoch{}.npy'.format(folder_name, epochs)
 test_act = './result/{}/test_act_loss_epoch{}.npy'.format(folder_name, epochs)
 test_latent = './result/{}/test_latent_loss_epoch{}.npy'.format(folder_name, epochs)
 test_pred = './result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs)
-test_kld = './result/{}/test_kld_loss_epoch{}.npy'.format(folder_name, epochs)
 
-plot_all_train_loss(train, test, train_img, train_act, train_latent, train_pred, train_kld, folder_name)
-plot_all_test_loss(test, test_img, test_act, test_latent, test_pred, test_kld, folder_name)
+if noise:
+    train_kld = './result/{}/train_kld_loss_epoch{}.npy'.format(folder_name, epochs)
+    test_kld = './result/{}/test_kld_loss_epoch{}.npy'.format(folder_name, epochs)
+    plot_all_train_loss_with_noise(train, test, train_img, train_act, train_latent, train_pred, train_kld, folder_name)
+    plot_all_test_loss_with_noise(test, test_img, test_act, test_latent, test_pred, test_kld, folder_name)
+else:
+    plot_all_train_loss_without_noise(train, test, train_img, train_act, train_latent, train_pred, folder_name)
+    plot_all_test_loss_without_noise(test, test_img, test_act, test_latent, test_pred, folder_name)
+
+
 

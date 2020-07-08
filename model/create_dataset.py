@@ -26,17 +26,23 @@ class MyDataset(Dataset):
         # except Exception as e:
         #     print(e)    
         n = self.__len__()
+        none_sample = {'image_bi_pre': None, 'image_bi_cur': None, 'image_bi_post': None, 'resz_action_pre': None, 'resz_action_cur': None}
+        # edge cases, use index in [1,n-1) 
+        if index == 0:
+            index = np.random.randint(1, n-1)
         if index == n-1:
-            index = index - 1
+            index = np.random.randint(1, n-1)
 
         # load action 
-        resz_action = self.resz_actions[index]
+        resz_action_pre = self.resz_actions[index-1]
+        resz_action_cur = self.resz_actions[index]
         # decide if action is valid
-        if resz_action[4] == 0:
-            return {'image_bi_pre': None, 'image_bi_post': None, 'resz_action': None}
+        if resz_action_pre[4] == 0 or resz_action_cur[4] == 0:
+            return none_sample
 
-        # load images (pre-transform images)
-        image_bi_pre = Image.open(self.image_paths_bi[index])
+        # load images (pre-transform images)        
+        image_bi_pre = Image.open(self.image_paths_bi[index-1])
+        image_bi_cur = Image.open(self.image_paths_bi[index])        
         image_bi_post = Image.open(self.image_paths_bi[index+1])
         #image_bi_pre = self.transform_img(image_bi_pre, trans)
         #image_bi_post = self.transform_img(image_bi_post, trans)
@@ -55,7 +61,7 @@ class MyDataset(Dataset):
         '''
         # sample = {'image_bi_pre': image_bi_pre, 'resz_action': resz_action, 'image_bi_post': image_bi_post, 
         #         'image_ori_pre': image_ori_pre, 'action': action, 'image_ori_post': image_ori_post}
-        sample = {'image_bi_pre': image_bi_pre, 'image_bi_post': image_bi_post, 'resz_action': resz_action[:4]}       
+        sample = {'image_bi_pre': image_bi_pre, 'image_bi_cur': image_bi_cur, 'image_bi_post': image_bi_post, 'resz_action_pre': resz_action_pre[:4], 'resz_action_cur': resz_action_cur[:4]}       
 
         # random transformation in [-2,2]
         #trans = None  
@@ -92,14 +98,15 @@ class Translation(object):
 
 
     def __call__(self, sample):
-        image_bi_pre, image_bi_post, action = sample['image_bi_pre'], sample['image_bi_post'], sample['resz_action']
+        image_bi_pre, image_bi_cur, image_bi_post, action_pre, action_cur = sample['image_bi_pre'], sample['image_bi_cur'], sample['image_bi_post'], sample['resz_action_pre'], sample['resz_action_cur']
         trans = list(2 * self.m_trans * np.random.random_sample((2,)) - self.m_trans)
-        trans_action = action.copy()
-        trans_action[:2] = trans_action[:2] + np.array(trans)
+        trans_action_pre, trans_action_cur = action_pre.copy(), action_cur.copy()
+        trans_action_pre[:2], trans_action_cur[:2] = trans_action_pre[:2] + np.array(trans), trans_action_cur[:2] + np.array(trans)
         image_bi_pre = TF.affine(image_bi_pre, angle=0, translate=trans, scale=1.0, shear=0.0)
+        image_bi_cur = TF.affine(image_bi_cur, angle=0, translate=trans, scale=1.0, shear=0.0)
         image_bi_post = TF.affine(image_bi_post, angle=0, translate=trans, scale=1.0, shear=0.0)
 
-        return {'image_bi_pre': image_bi_pre, 'image_bi_post': image_bi_post, 'resz_action': trans_action}
+        return {'image_bi_pre': image_bi_pre, 'image_bi_cur': image_bi_cur, 'image_bi_post': image_bi_post, 'resz_action_pre': trans_action_pre, 'resz_action_cur': trans_action_cur}
 
 # class Rotation(object):
 #     '''Rotate the image by certain angle [-max_angle, max_angle], e.g., [-pi/4, pi/4]
@@ -122,21 +129,29 @@ class HFlip(object):
     def __init__(self, probability=0.5):
         self.p = probability
 
+    def flip_angle(self, action):
+        # angle in [0, 2*pi]
+        if action[2] > math.pi:
+            action[2] = 3 * math.pi - action[2] # angle=3*pi-angle
+        else:
+            action[2] = math.pi - action[2] # angle=pi-angle         
+        return action
+
     def __call__(self, sample):
         if random.random() >= self.p:
             return sample
         else:    
-            image_bi_pre, image_bi_post, action = sample['image_bi_pre'], sample['image_bi_post'], sample['resz_action']
-            image_bi_pre, image_bi_post = TF.hflip(image_bi_pre), TF.hflip(image_bi_post)
+            image_bi_pre, image_bi_cur, image_bi_post, action_pre, action_cur = sample['image_bi_pre'], sample['image_bi_cur'], sample['image_bi_post'], sample['resz_action_pre'], sample['resz_action_cur']
+            image_bi_pre, image_bi_cur, image_bi_post = TF.hflip(image_bi_pre), TF.hflip(image_bi_cur), TF.hflip(image_bi_post)
             # position: x=50-x, y=y
-            tsfrm_action = action.copy()
-            tsfrm_action[0] = image_bi_pre.size[0] - tsfrm_action[0]
+            tsfrm_action_pre, tsfrm_action_cur = action_pre.copy(), action_cur.copy()
+            tsfrm_action_pre[0], tsfrm_action_cur[0] = image_bi_pre.size[0] - tsfrm_action_pre[0], image_bi_cur.size[0] - tsfrm_action_cur[0]
             # angle in [0, 2*pi]
-            if tsfrm_action[2] > math.pi:
-                tsfrm_action[2] = 3 * math.pi - tsfrm_action[2] # angle=3*pi-angle
-            else:
-                tsfrm_action[2] = math.pi - tsfrm_action[2] # angle=pi-angle 
-            return {'image_bi_pre': image_bi_pre, 'image_bi_post': image_bi_post, 'resz_action': tsfrm_action}
+            tsfrm_action_pre = self.flip_angle(tsfrm_action_pre)
+            tsfrm_action_cur = self.flip_angle(tsfrm_action_cur)
+
+            return {'image_bi_pre': image_bi_pre, 'image_bi_cur': image_bi_cur, 'image_bi_post': image_bi_post, 'resz_action_pre': tsfrm_action_pre, 'resz_action_cur': tsfrm_action_cur}
+
 
 class VFlip(object):
     '''Ramdom vertical flip the image and action with probabilty p
@@ -148,25 +163,26 @@ class VFlip(object):
         if random.random() >= self.p:
             return sample
         else:    
-            image_bi_pre, image_bi_post, action = sample['image_bi_pre'], sample['image_bi_post'], sample['resz_action']
-            image_bi_pre, image_bi_post = TF.vflip(image_bi_pre), TF.vflip(image_bi_post)
+            image_bi_pre, image_bi_cur, image_bi_post, action_pre, action_cur = sample['image_bi_pre'], sample['image_bi_cur'], sample['image_bi_post'], sample['resz_action_pre'], sample['resz_action_cur']
+            image_bi_pre, image_bi_cur, image_bi_post = TF.vflip(image_bi_pre), TF.vflip(image_bi_cur), TF.vflip(image_bi_post)
             # position: x=x, y=50-y
-            tsfrm_action = action.copy()
-            tsfrm_action[1] = image_bi_pre.size[1] - tsfrm_action[1]
+            tsfrm_action_pre, tsfrm_action_cur = action_pre.copy(), action_cur.copy()
+            tsfrm_action_pre[1], tsfrm_action_cur[1] = image_bi_pre.size[1] - tsfrm_action_pre[1], image_bi_cur.size[1] - tsfrm_action_cur[1]
             # angle in [0, 2*pi], angle=2*pi-angle 
-            tsfrm_action[2] = 2 * math.pi - tsfrm_action[2] 
-            return {'image_bi_pre': image_bi_pre, 'image_bi_post': image_bi_post, 'resz_action': tsfrm_action}
+            tsfrm_action_pre[2] = 2 * math.pi - tsfrm_action_pre[2]
+            tsfrm_action_cur[2] = 2 * math.pi - tsfrm_action_cur[2] 
+            return {'image_bi_pre': image_bi_pre, 'image_bi_cur': image_bi_cur, 'image_bi_post': image_bi_post, 'resz_action_pre': tsfrm_action_pre, 'resz_action_cur': tsfrm_action_cur}
 
 class ToTensor(object):
     '''convert ndarrays in sample to tensors
     '''
     def __call__(self, sample):
-        image_bi_pre, image_bi_post, resz_action = sample['image_bi_pre'], sample['image_bi_post'], sample['resz_action']
+        image_bi_pre, image_bi_cur, image_bi_post, resz_action_pre, resz_action_cur = sample['image_bi_pre'], sample['image_bi_cur'], sample['image_bi_post'], sample['resz_action_pre'], sample['resz_action_cur']
         # to tensor and binarize image
         image_bi_pre = TF.to_tensor(image_bi_pre) > 0.3
+        image_bi_cur = TF.to_tensor(image_bi_cur) > 0.3
         image_bi_post = TF.to_tensor(image_bi_post) > 0.3
-        
-        return {'image_bi_pre': image_bi_pre.float(), 'image_bi_post': image_bi_post.float(), 'resz_action': torch.tensor(resz_action)}
+        return {'image_bi_pre': image_bi_pre.float(), 'image_bi_cur': image_bi_cur.float(), 'image_bi_post': image_bi_post.float(), 'resz_action_pre': torch.tensor(resz_action_pre), 'resz_action_cur': torch.tensor(resz_action_cur)}
 
 def my_collate(batch):
     '''filer out the data when sample['image_bi_post']=None, which means action's last element is zero

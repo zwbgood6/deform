@@ -102,22 +102,35 @@ def predict():
     model.eval()
     with torch.no_grad():
         for batch_idx, batch_data in enumerate(dataloader):
-            # image before action
+            # order: img_pre -> act_pre -> img_cur -> act_cur -> img_post
+            # previous image 
             img_pre = batch_data['image_bi_pre']
             img_pre = img_pre.float().to(device).view(-1, 1, 50, 50)
-            # action
-            act = batch_data['resz_action']
-            act = act.float().to(device).view(-1, 4)
-            # image after action
+            # previous action
+            act_pre = batch_data['resz_action_pre']
+            act_pre = act_pre.float().to(device).view(-1, 4)
+            # current image 
+            img_cur = batch_data['image_bi_cur']
+            img_cur = img_cur.float().to(device).view(-1, 1, 50, 50) 
+            # current action
+            act_cur = batch_data['resz_action_cur']
+            act_cur = act_cur.float().to(device).view(-1, 4)
+            # post image
             img_post = batch_data['image_bi_post']
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
-            # model
-            latent_img_pre, latent_act, _, _, _, K_T, L_T = model(img_pre, act, img_post)
-            recon_latent_img_post = get_next_state_linear(latent_img_pre, latent_act, K_T, L_T)
-            recon_img_post = model.decoder(recon_latent_img_post)
+            # prediction for current image
+            latent_img_pre, latent_act_pre, _, _, _, K_T_pre, L_T_pre = model(img_pre, act_pre, img_cur)
+            recon_latent_img_cur = get_next_state_linear(latent_img_pre, latent_act_pre, K_T_pre, L_T_pre)
+            recon_img_cur = model.decoder(recon_latent_img_cur)
+            # prediction for post image
+            latent_img_cur, latent_act_cur, _, _, _, K_T_cur, L_T_cur = model(img_cur, act_cur, img_post)
+            recon_latent_img_post = get_next_state_linear(latent_img_cur, latent_act_cur, K_T_cur, L_T_cur)
+            recon_img_post = model.decoder(recon_latent_img_post)            
             if batch_idx % 10 == 0:
                 n = min(batch_data['image_bi_pre'].size(0), 8)
                 comparison = torch.cat([batch_data['image_bi_pre'][:n],
+                                        batch_data['image_bi_cur'][:n],
+                                        recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],
                                         batch_data['image_bi_post'][:n],
                                         recon_img_post.view(-1, 1, 50, 50).cpu()[:n]])
                 save_image(comparison.cpu(),
@@ -134,7 +147,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_K_local_small'
+folder_name = 'test'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
