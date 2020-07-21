@@ -35,8 +35,10 @@ class CAE(nn.Module):
                                          nn.MaxPool2d(3, stride=2, padding=1))  
         self.fc1 = nn.Linear(128*3*3, latent_state_dim) # size: 128*3*3 > latent_state_dim
         self.fc2 = nn.Linear(latent_state_dim, 128*3*3)
-        self.fc3 = nn.Linear(128*3*3, latent_state_dim*latent_state_dim) # K
-        self.fc4 = nn.Linear(128*3*3, latent_state_dim*latent_act_dim) # L
+        self.fc31 = nn.Linear(128*3*3, 5000) # K: 1152 -> 5000 -> 10000
+        self.fc32 = nn.Linear(5000, latent_state_dim*latent_state_dim) # K: 1152 -> 5000 -> 10000
+        self.fc41 = nn.Linear(128*3*3, 2500) # L: 1152 -> 2500 -> 5000
+        self.fc42 = nn.Linear(2500, latent_state_dim*latent_act_dim) # L
         
         self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
                                           nn.ReLU(),
@@ -68,8 +70,8 @@ class CAE(nn.Module):
         x = x.view(x.shape[0], -1) 
         # return latent state g, and batch numbers of control matrix L.T=f(x), L.T is transpose of L
         if label == 'pre':
-            return relu(self.fc1(x)), relu(self.fc3(x)).view(-1, self.latent_state_dim, self.latent_state_dim), \
-                relu(self.fc4(x)).view(-1, self.latent_act_dim, self.latent_state_dim) 
+            return relu(self.fc1(x)), relu(self.fc32(relu(self.fc31(x)))).view(-1, self.latent_state_dim, self.latent_state_dim), \
+                relu(self.fc42(relu(self.fc41(x)))).view(-1, self.latent_act_dim, self.latent_state_dim) 
         elif label == 'post':
             return relu(self.fc1(x))
 
@@ -363,9 +365,13 @@ train_loss_all, train_img_loss_all, train_act_loss_all, train_latent_loss_all, t
 test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_pred_loss_all, _ = create_loss_list(loss_logger, kld=False)         
 
 # freeze the layers for K and L
-for param in model.fc3.parameters():
+for param in model.fc31.parameters():
     param.requires_grad = False
-for param in model.fc4.parameters():
+for param in model.fc32.parameters():
+    param.requires_grad = False    
+for param in model.fc41.parameters():
+    param.requires_grad = False
+for param in model.fc42.parameters():
     param.requires_grad = False
 
 for epoch in range(init_epoch, epochs+1):
@@ -378,10 +384,14 @@ for epoch in range(init_epoch, epochs+1):
             param.requires_grad = False
         for param in model.fc2.parameters():
             param.requires_grad = False 
-        for param in model.fc3.parameters():
+        for param in model.fc31.parameters():
             param.requires_grad = True
-        for param in model.fc4.parameters():
-            param.requires_grad = True              
+        for param in model.fc32.parameters():
+            param.requires_grad = True            
+        for param in model.fc41.parameters():
+            param.requires_grad = True    
+        for param in model.fc42.parameters():
+            param.requires_grad = True                        
         for param in model.dconv_layers.parameters():
             param.requires_grad = False  
         for param in model.fc5.parameters():
