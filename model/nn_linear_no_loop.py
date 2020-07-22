@@ -327,13 +327,13 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
+parser.add_argument('--epochs', type=int, default=800, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
 parser.add_argument('--gamma-lat', type=int, default=900, metavar='N',
                     help='scale coefficient for loss of latent dynamics (default: 150*6)')     
-parser.add_argument('--gamma-pred', type=int, default=2, metavar='N',
+parser.add_argument('--gamma-pred', type=int, default=5, metavar='N',
                     help='scale coefficient for loss of prediction (default: 3)')                                                          
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
@@ -351,7 +351,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 1000#22515
+total_img_num = 22515
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
@@ -410,43 +410,40 @@ train_loss_all, train_img_loss_all, train_act_loss_all, train_latent_loss_all, t
 test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_pred_loss_all, _ = create_loss_list(loss_logger, kld=False)         
 
 # freeze the layers for K and L
-# for param in model.fc31.parameters():
-#     param.requires_grad = False
-# for param in model.fc32.parameters():
-#     param.requires_grad = False    
-# for param in model.fc41.parameters():
-#     param.requires_grad = False
-# for param in model.fc42.parameters():
-#     param.requires_grad = False
+for param in model.conv_layers_matrix.parameters():
+    param.requires_grad = False
+for param in model.fc3.parameters():
+    param.requires_grad = False    
+for param in model.fc4.parameters():
+    param.requires_grad = False
+
 
 for epoch in range(init_epoch, epochs+1):
     # freeze the layers for g^t and a^t
     # unfreeze the layers for K and L
-    # if epoch == 400: # hyper-param      
-    #     for param in model.conv_layers.parameters():
-    #         param.requires_grad = False
-    #     for param in model.fc1.parameters():
-    #         param.requires_grad = False
-    #     for param in model.fc2.parameters():
-    #         param.requires_grad = False 
-    #     for param in model.fc31.parameters():
-    #         param.requires_grad = True
-    #     for param in model.fc32.parameters():
-    #         param.requires_grad = True            
-    #     for param in model.fc41.parameters():
-    #         param.requires_grad = True    
-    #     for param in model.fc42.parameters():
-    #         param.requires_grad = True                        
-    #     for param in model.dconv_layers.parameters():
-    #         param.requires_grad = False  
-    #     for param in model.fc5.parameters():
-    #         param.requires_grad = False 
-    #     for param in model.fc6.parameters():
-    #         param.requires_grad = False 
-    #     for param in model.fc7.parameters():
-    #         param.requires_grad = False 
-    #     for param in model.fc8.parameters():
-    #         param.requires_grad = False                                                         
+    if epoch == 400: # hyper-param      
+        for param in model.conv_layers.parameters():
+            param.requires_grad = False
+        for param in model.fc1.parameters():
+            param.requires_grad = False
+        for param in model.fc2.parameters():
+            param.requires_grad = False 
+        for param in model.dconv_layers.parameters():
+            param.requires_grad = False              
+        for param in model.conv_layers_matrix.parameters():
+            param.requires_grad = True            
+        for param in model.fc3.parameters():
+            param.requires_grad = True          
+        for param in model.fc4.parameters():
+            param.requires_grad = True                           
+        for param in model.fc5.parameters():
+            param.requires_grad = False 
+        for param in model.fc6.parameters():
+            param.requires_grad = False 
+        for param in model.fc7.parameters():
+            param.requires_grad = False 
+        for param in model.fc8.parameters():
+            param.requires_grad = False                                                         
     train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch)
     test_loss, test_img_loss, test_act_loss, test_latent_loss, test_pred_loss = test_new(epoch)
     train_loss_all.append(train_loss)
