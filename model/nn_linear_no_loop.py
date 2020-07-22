@@ -230,6 +230,9 @@ def train_new(epoch):
         optimizer.zero_grad()
         # model
         latent_img_cur, latent_act, latent_img_post, recon_img_cur, recon_act, K_T, L_T = model(img_cur, act, img_post)
+        # prediction
+        pred_latent_img_post = get_next_state_linear(latent_img_cur, latent_act, K_T, L_T)
+        pred_img_cur = model.decoder(pred_latent_img_post)        
         # loss
         loss_img = loss_function_img(recon_img_cur, img_cur)
         loss_act = loss_function_act(recon_act, act)
@@ -252,8 +255,10 @@ def train_new(epoch):
         # reconstruction
         if batch_idx == 0:
             n = min(batch_data['image_bi_cur'].size(0), 8)
-            comparison = torch.cat([batch_data['image_bi_cur'][:n],
-                                  recon_img_cur.view(-1, 1, 50, 50).cpu()[:n]]) 
+            comparison = torch.cat([batch_data['image_bi_cur'][:n],                 # current image
+                                  recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],      # reconstruction of current image
+                                  batch_data['image_bi_post'][:n],                  # post image
+                                  pred_img_cur.view(-1, 1, 50, 50).cpu()[:n]])      # prediction of post image
             save_image(comparison.cpu(),
                      './result/{}/reconstruction_train/reconstruct_epoch_{}.png'.format(folder_name, epoch), nrow=n)      
             plot_sample(batch_data['image_bi_cur'][:n].detach().cpu().numpy(), 
@@ -286,6 +291,9 @@ def test_new(epoch):
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # model
             latent_img_cur, latent_act, latent_img_post, recon_img_cur, recon_act, K_T, L_T = model(img_cur, act, img_post)
+            # prediction
+            pred_latent_img_post = get_next_state_linear(latent_img_cur, latent_act, K_T, L_T)
+            pred_img_cur = model.decoder(pred_latent_img_post)
             # loss
             loss_img = loss_function_img(recon_img_cur, img_cur)
             loss_act = loss_function_act(recon_act, act)
@@ -299,8 +307,10 @@ def test_new(epoch):
             pred_loss += GAMMA_pred * loss_predict.item()            
             if batch_idx == 0:
                 n = min(batch_data['image_bi_cur'].size(0), 8)
-                comparison = torch.cat([batch_data['image_bi_cur'][:n],
-                                      recon_img_cur.view(-1, 1, 50, 50).cpu()[:n]])
+                comparison = torch.cat([batch_data['image_bi_cur'][:n],                 # current image
+                                      recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],      # reconstruction of current image
+                                      batch_data['image_bi_post'][:n],                  # post image
+                                      pred_img_cur.view(-1, 1, 50, 50).cpu()[:n]])      # prediction of post image
                 save_image(comparison.cpu(),
                          './result/{}/reconstruction_test/reconstruct_epoch_{}.png'.format(folder_name, epoch), nrow=n)                                         
                 plot_sample(batch_data['image_bi_cur'][:n].detach().cpu().numpy(), 
@@ -317,7 +327,7 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=800, metavar='N',
+parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
@@ -341,7 +351,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 22515
+total_img_num = 1000#22515
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)

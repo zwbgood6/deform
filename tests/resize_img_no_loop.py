@@ -22,5 +22,5 @@ for i in range(22515):
     # image to grayscale
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
     add2 = '/home/zwenbo/Documents/research/deform/rope_dataset/simplified_dataset/rope_no_loop_all_resize_gray'
-    cv2.imwrite(add2 + add3, img)
+    #cv2.imwrite(add2 + add3, img)
 
