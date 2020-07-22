@@ -16,7 +16,7 @@ import os
 import math
 
 class CAE(nn.Module):
-    def __init__(self, latent_state_dim=100, latent_act_dim=50):
+    def __init__(self, latent_state_dim=80, latent_act_dim=40):
         super(CAE, self).__init__()
         # state
         self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
@@ -34,12 +34,7 @@ class CAE(nn.Module):
                                          nn.ReLU(),
                                          nn.MaxPool2d(3, stride=2, padding=1))  
         self.fc1 = nn.Linear(128*3*3, latent_state_dim) # size: 128*3*3 > latent_state_dim
-        self.fc2 = nn.Linear(latent_state_dim, 128*3*3)
-        self.fc31 = nn.Linear(128*3*3, 5000) # K: 1152 -> 5000 -> 10000
-        self.fc32 = nn.Linear(5000, latent_state_dim*latent_state_dim) # K: 1152 -> 5000 -> 10000
-        self.fc41 = nn.Linear(128*3*3, 2500) # L: 1152 -> 2500 -> 5000
-        self.fc42 = nn.Linear(2500, latent_state_dim*latent_act_dim) # L
-        
+        self.fc2 = nn.Linear(latent_state_dim, 128*3*3)       
         self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
                                           nn.ReLU(),
                                           nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
@@ -50,12 +45,31 @@ class CAE(nn.Module):
                                           nn.ReLU(),                                         
                                           nn.ConvTranspose2d(32, 1, 2, stride=2, padding=2),
                                           nn.Sigmoid())
+        # K(g^t,g^{t+1}) and L(g^t,g^{t+1},a^t)
+        self.conv_layers_matrix = nn.Sequential(nn.Conv2d(2, 64, 3, padding=1),  
+                                            nn.ReLU(),
+                                            nn.MaxPool2d(3, stride=1),
+                                            nn.Conv2d(64, 128, 3, padding=1), 
+                                            nn.ReLU(),
+                                            nn.MaxPool2d(3, stride=2),
+                                            nn.Conv2d(128, 256, 3, padding=1), # channel 1 32 64 64; the next batch size should be larger than 8, 4 corner features + 4 direction features
+                                            nn.ReLU(),
+                                            nn.MaxPool2d(3, stride=2),
+                                            nn.Conv2d(256, 256, 3, padding=1),
+                                            nn.ReLU(),
+                                            nn.Conv2d(256, 256, 3, padding=1),
+                                            nn.ReLU(),                                            
+                                            nn.MaxPool2d(3, stride=2, padding=1)) 
+        self.fc3 = nn.Linear(256*6*6, latent_state_dim*latent_state_dim) # K: 9216 -> 6400
+        #self.fc32 = nn.Linear(3000, latent_state_dim*latent_state_dim) 
+        self.fc4 = nn.Linear(256*6*6 + latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200
+        #self.fc42 = nn.Linear(3200, latent_state_dim*latent_act_dim)    
         # action
-        self.fc5 = nn.Linear(4, 30)
-        self.fc6 = nn.Linear(30, latent_act_dim) 
-        self.fc7 = nn.Linear(latent_act_dim, 30) # 10-100
-        self.fc8 = nn.Linear(30, 4)  
-        # control matrix
+        self.fc5 = nn.Linear(4, latent_act_dim)
+        self.fc6 = nn.Linear(latent_act_dim, latent_act_dim) 
+        self.fc7 = nn.Linear(latent_act_dim, latent_act_dim) # 10-100
+        self.fc8 = nn.Linear(latent_act_dim, 4)  
+                                                          
         #self.control_matrix = nn.Parameter(torch.rand((latent_state_dim, latent_act_dim), requires_grad=True)) 
         # multiplication/additive to action
         # add these in order to use GPU for parameters
@@ -65,15 +79,10 @@ class CAE(nn.Module):
         self.latent_act_dim = latent_act_dim
         self.latent_state_dim = latent_state_dim
 
-    def encoder(self, x, label):
+    def encoder(self, x):
         x = self.conv_layers(x)
         x = x.view(x.shape[0], -1) 
-        # return latent state g, and batch numbers of control matrix L.T=f(x), L.T is transpose of L
-        if label == 'pre':
-            return relu(self.fc1(x)), relu(self.fc32(relu(self.fc31(x)))).view(-1, self.latent_state_dim, self.latent_state_dim), \
-                relu(self.fc42(relu(self.fc41(x)))).view(-1, self.latent_act_dim, self.latent_state_dim) 
-        elif label == 'post':
-            return relu(self.fc1(x))
+        return relu(self.fc1(x))
 
     def decoder(self, x):
         x = relu(self.fc2(x))
@@ -88,16 +97,39 @@ class CAE(nn.Module):
         h2 = relu(self.fc7(u))
         return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
 
+    def encoder_matrix(self, x_cur, a, x_post):
+        # print('x_cur shape', x_cur.shape)
+        # print('x_post shape', x_post.shape)
+        x = torch.cat((x_cur, x_post), 1)
+        # print('after concatenation shape', x.shape)
+        x = self.conv_layers_matrix(x) # 256*6*6
+        # print('after convolution shape', x.shape)
+        x = x.view(x.shape[0], -1)
+        #print('x shape', x.shape)
+        xa = torch.cat((x,a), 1)
+        #print('xu shape', xa.shape)
+        return relu(self.fc3(x)).view(-1, self.latent_state_dim, self.latent_state_dim), relu(self.fc4(xa)).view(-1, self.latent_act_dim, self.latent_state_dim)
+
     def add_identity(self, K):
         # add identity matrix to matrix K
         batch_num, x_len, _ = K.size()       
         return K + torch.eye(x_len).reshape((1, x_len, x_len)).repeat(batch_num, 1, 1).to(device)
 
-    def forward(self, x_pre, u, x_post):
-        x_pre, K_T, L_T = self.encoder(x_pre, 'pre') 
-        u = self.encoder_act(u)  
-        x_post = self.encoder(x_post, 'post')     
-        return x_pre, u, x_post, self.decoder(x_pre), self.decoder_act(u), K_T, L_T#self.control_matrix
+    def forward(self, x_cur, u, x_post):
+        # print('x_cur shape', x_cur.shape)
+        g_cur = self.encoder(x_cur) 
+        # print('g_cur shape', g_cur.shape)
+        # print('u shape', u.shape)
+        a = self.encoder_act(u)  
+        # print('a shape', a.shape)
+        g_post = self.encoder(x_post)     
+        # print('x_cur shape', x_cur.shape)
+        # print('a shape', a.shape)
+        # print('x_post shape', x_post.shape)
+        K_T, L_T = self.encoder_matrix(x_cur, a, x_post) 
+        # print('K_T shape', K_T.shape) 
+        # print('L_T shape', L_T.shape)        
+        return g_cur, a, g_post, self.decoder(g_cur), self.decoder_act(a), K_T, L_T#self.control_matrix
 
 def loss_function(recon_x, x):
     '''
@@ -139,6 +171,9 @@ def loss_function_act(recon_act, act):
 #     return loss_latent
 
 def loss_function_latent_linear(latent_img_pre, latent_img_post, latent_action, K_T, L_T):
+    # print('latent image pre', latent_img_pre.view(latent_img_pre.shape[0], 1, -1).shape)
+    # print('K_T', K_T.shape)
+    # print('multiplication', torch.matmul(latent_img_pre.view(latent_img_pre.shape[0], 1, -1), K_T).shape)
     G = latent_img_post.view(latent_img_post.shape[0], 1, -1) - torch.matmul(latent_img_pre.view(latent_img_pre.shape[0], 1, -1), K_T)
     return get_error_linear(G, latent_action, L_T)
 
@@ -280,7 +315,7 @@ def test_new(epoch):
 parser = argparse.ArgumentParser(description='CAE Rope Deform Example')
 parser.add_argument('--folder-name', default='test', 
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
-parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
 parser.add_argument('--epochs', type=int, default=800, metavar='N',
                     help='number of epochs to train (default: 500)')
@@ -365,43 +400,43 @@ train_loss_all, train_img_loss_all, train_act_loss_all, train_latent_loss_all, t
 test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_pred_loss_all, _ = create_loss_list(loss_logger, kld=False)         
 
 # freeze the layers for K and L
-for param in model.fc31.parameters():
-    param.requires_grad = False
-for param in model.fc32.parameters():
-    param.requires_grad = False    
-for param in model.fc41.parameters():
-    param.requires_grad = False
-for param in model.fc42.parameters():
-    param.requires_grad = False
+# for param in model.fc31.parameters():
+#     param.requires_grad = False
+# for param in model.fc32.parameters():
+#     param.requires_grad = False    
+# for param in model.fc41.parameters():
+#     param.requires_grad = False
+# for param in model.fc42.parameters():
+#     param.requires_grad = False
 
 for epoch in range(init_epoch, epochs+1):
     # freeze the layers for g^t and a^t
     # unfreeze the layers for K and L
-    if epoch == 400: # hyper-param      
-        for param in model.conv_layers.parameters():
-            param.requires_grad = False
-        for param in model.fc1.parameters():
-            param.requires_grad = False
-        for param in model.fc2.parameters():
-            param.requires_grad = False 
-        for param in model.fc31.parameters():
-            param.requires_grad = True
-        for param in model.fc32.parameters():
-            param.requires_grad = True            
-        for param in model.fc41.parameters():
-            param.requires_grad = True    
-        for param in model.fc42.parameters():
-            param.requires_grad = True                        
-        for param in model.dconv_layers.parameters():
-            param.requires_grad = False  
-        for param in model.fc5.parameters():
-            param.requires_grad = False 
-        for param in model.fc6.parameters():
-            param.requires_grad = False 
-        for param in model.fc7.parameters():
-            param.requires_grad = False 
-        for param in model.fc8.parameters():
-            param.requires_grad = False                                                         
+    # if epoch == 400: # hyper-param      
+    #     for param in model.conv_layers.parameters():
+    #         param.requires_grad = False
+    #     for param in model.fc1.parameters():
+    #         param.requires_grad = False
+    #     for param in model.fc2.parameters():
+    #         param.requires_grad = False 
+    #     for param in model.fc31.parameters():
+    #         param.requires_grad = True
+    #     for param in model.fc32.parameters():
+    #         param.requires_grad = True            
+    #     for param in model.fc41.parameters():
+    #         param.requires_grad = True    
+    #     for param in model.fc42.parameters():
+    #         param.requires_grad = True                        
+    #     for param in model.dconv_layers.parameters():
+    #         param.requires_grad = False  
+    #     for param in model.fc5.parameters():
+    #         param.requires_grad = False 
+    #     for param in model.fc6.parameters():
+    #         param.requires_grad = False 
+    #     for param in model.fc7.parameters():
+    #         param.requires_grad = False 
+    #     for param in model.fc8.parameters():
+    #         param.requires_grad = False                                                         
     train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch)
     test_loss, test_img_loss, test_act_loss, test_latent_loss, test_pred_loss = test_new(epoch)
     train_loss_all.append(train_loss)
