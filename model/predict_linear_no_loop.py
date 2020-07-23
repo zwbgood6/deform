@@ -177,7 +177,7 @@ def predict():
 
 
 print('***** Preparing Data *****')
-total_img_num = 1000#22515
+total_img_num = 22515
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray', total_img_num)
 action_path = './rope_dataset/rope_no_loop_all_resize_gray/resize_actions.npy'
 actions = np.load(action_path)
@@ -186,7 +186,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test'
+folder_name = 'test_freeze_with_new_K_L'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

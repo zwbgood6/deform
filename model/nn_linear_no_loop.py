@@ -422,28 +422,28 @@ for epoch in range(init_epoch, epochs+1):
     # freeze the layers for g^t and a^t
     # unfreeze the layers for K and L
     if epoch == 400: # hyper-param      
-        for param in model.conv_layers.parameters():
-            param.requires_grad = False
-        for param in model.fc1.parameters():
-            param.requires_grad = False
-        for param in model.fc2.parameters():
-            param.requires_grad = False 
-        for param in model.dconv_layers.parameters():
-            param.requires_grad = False              
+        # for param in model.conv_layers.parameters():
+        #     param.requires_grad = False
+        # for param in model.fc1.parameters():
+        #     param.requires_grad = False
+        # for param in model.fc2.parameters():
+        #     param.requires_grad = False 
+        # for param in model.dconv_layers.parameters():
+        #     param.requires_grad = False              
         for param in model.conv_layers_matrix.parameters():
             param.requires_grad = True            
         for param in model.fc3.parameters():
             param.requires_grad = True          
         for param in model.fc4.parameters():
             param.requires_grad = True                           
-        for param in model.fc5.parameters():
-            param.requires_grad = False 
-        for param in model.fc6.parameters():
-            param.requires_grad = False 
-        for param in model.fc7.parameters():
-            param.requires_grad = False 
-        for param in model.fc8.parameters():
-            param.requires_grad = False                                                         
+        # for param in model.fc5.parameters():
+        #     param.requires_grad = False 
+        # for param in model.fc6.parameters():
+        #     param.requires_grad = False 
+        # for param in model.fc7.parameters():
+        #     param.requires_grad = False 
+        # for param in model.fc8.parameters():
+        #     param.requires_grad = False                                                         
     train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch)
     test_loss, test_img_loss, test_act_loss, test_latent_loss, test_pred_loss = test_new(epoch)
     train_loss_all.append(train_loss)
