@@ -41,7 +41,7 @@ class CAE(nn.Module):
                                           nn.ConvTranspose2d(32, 1, 2, stride=2, padding=2),
                                           nn.Sigmoid())
         # K(g^t,g^{t+1}) and L(g^t,g^{t+1},a^t)
-        self.conv_layers_matrix = nn.Sequential(nn.Conv2d(2, 64, 3, padding=1),  
+        self.conv_layers_matrix = nn.Sequential(nn.Conv2d(1, 64, 3, padding=1),  
                                             nn.ReLU(),
                                             nn.MaxPool2d(3, stride=1),
                                             nn.Conv2d(64, 128, 3, padding=1), 
@@ -92,12 +92,12 @@ class CAE(nn.Module):
         h2 = relu(self.fc7(u))
         return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
 
-    def encoder_matrix(self, x_cur, a, x_post):
+    def encoder_matrix(self, x, a):
         # print('x_cur shape', x_cur.shape)
         # print('x_post shape', x_post.shape)
-        x = torch.cat((x_cur, x_post), 1)
+        #x = torch.cat((x_cur, x_post), 1)
         # print('after concatenation shape', x.shape)
-        x = self.conv_layers_matrix(x) # 256*6*6
+        x = self.conv_layers_matrix(x) # output size: 256*6*6
         # print('after convolution shape', x.shape)
         x = x.view(x.shape[0], -1)
         #print('x shape', x.shape)
@@ -121,11 +121,10 @@ class CAE(nn.Module):
         # print('x_cur shape', x_cur.shape)
         # print('a shape', a.shape)
         # print('x_post shape', x_post.shape)
-        K_T, L_T = self.encoder_matrix(x_cur, a, x_post) 
+        K_T, L_T = self.encoder_matrix(x_cur, a) 
         # print('K_T shape', K_T.shape) 
         # print('L_T shape', L_T.shape)        
         return g_cur, a, g_post, self.decoder(g_cur), self.decoder_act(a), K_T, L_T#self.control_matrix
-
 
 # def get_latent_U(U):
 #     U_latent = []           
@@ -186,7 +185,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_freeze2_with_new_K_L'
+folder_name = 'test'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
