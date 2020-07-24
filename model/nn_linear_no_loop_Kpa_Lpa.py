@@ -60,7 +60,7 @@ class CAE(nn.Module):
                                             nn.Conv2d(256, 256, 3, padding=1),
                                             nn.ReLU(),                                            
                                             nn.MaxPool2d(3, stride=2, padding=1)) 
-        self.fc3 = nn.Linear(256*6*6, latent_state_dim*latent_state_dim) # K: 9216 -> 6400
+        self.fc3 = nn.Linear(256*6*6 + latent_act_dim, latent_state_dim*latent_state_dim) # K: 9216+40 -> 6400
         #self.fc32 = nn.Linear(3000, latent_state_dim*latent_state_dim) 
         self.fc4 = nn.Linear(256*6*6 + latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200
         #self.fc42 = nn.Linear(3200, latent_state_dim*latent_act_dim)    
@@ -108,7 +108,7 @@ class CAE(nn.Module):
         #print('x shape', x.shape)
         xa = torch.cat((x,a), 1)
         #print('xu shape', xa.shape)
-        return relu(self.fc3(x)).view(-1, self.latent_state_dim, self.latent_state_dim), relu(self.fc4(xa)).view(-1, self.latent_act_dim, self.latent_state_dim)
+        return relu(self.fc3(xa)).view(-1, self.latent_state_dim, self.latent_state_dim), relu(self.fc4(xa)).view(-1, self.latent_act_dim, self.latent_state_dim)
 
     def add_identity(self, K):
         # add identity matrix to matrix K
