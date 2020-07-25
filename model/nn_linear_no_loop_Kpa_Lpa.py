@@ -327,7 +327,7 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=800, metavar='N',
+parser.add_argument('--epochs', type=int, default=1000, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
@@ -421,7 +421,7 @@ for param in model.fc4.parameters():
 for epoch in range(init_epoch, epochs+1):
     # freeze the layers for g^t and a^t
     # unfreeze the layers for K and L
-    if epoch == 400: # hyper-param      
+    if epoch == 500: # hyper-param      
         # for param in model.conv_layers.parameters():
         #     param.requires_grad = False
         # for param in model.fc1.parameters():
