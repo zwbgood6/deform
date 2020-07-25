@@ -232,7 +232,7 @@ def train_new(epoch):
         latent_img_cur, latent_act, latent_img_post, recon_img_cur, recon_act, K_T, L_T = model(img_cur, act, img_post)
         # prediction
         pred_latent_img_post = get_next_state_linear(latent_img_cur, latent_act, K_T, L_T)
-        pred_img_cur = model.decoder(pred_latent_img_post)        
+        pred_img_post = model.decoder(pred_latent_img_post)        
         # loss
         loss_img = loss_function_img(recon_img_cur, img_cur)
         loss_act = loss_function_act(recon_act, act)
@@ -258,7 +258,7 @@ def train_new(epoch):
             comparison = torch.cat([batch_data['image_bi_cur'][:n],                 # current image
                                   recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],      # reconstruction of current image
                                   batch_data['image_bi_post'][:n],                  # post image
-                                  pred_img_cur.view(-1, 1, 50, 50).cpu()[:n]])      # prediction of post image
+                                  pred_img_post.view(-1, 1, 50, 50).cpu()[:n]])     # prediction of post image
             save_image(comparison.cpu(),
                      './result/{}/reconstruction_train/reconstruct_epoch_{}.png'.format(folder_name, epoch), nrow=n)      
             plot_sample(batch_data['image_bi_cur'][:n].detach().cpu().numpy(), 
@@ -293,7 +293,7 @@ def test_new(epoch):
             latent_img_cur, latent_act, latent_img_post, recon_img_cur, recon_act, K_T, L_T = model(img_cur, act, img_post)
             # prediction
             pred_latent_img_post = get_next_state_linear(latent_img_cur, latent_act, K_T, L_T)
-            pred_img_cur = model.decoder(pred_latent_img_post)
+            pred_img_post = model.decoder(pred_latent_img_post)
             # loss
             loss_img = loss_function_img(recon_img_cur, img_cur)
             loss_act = loss_function_act(recon_act, act)
@@ -310,7 +310,7 @@ def test_new(epoch):
                 comparison = torch.cat([batch_data['image_bi_cur'][:n],                 # current image
                                       recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],      # reconstruction of current image
                                       batch_data['image_bi_post'][:n],                  # post image
-                                      pred_img_cur.view(-1, 1, 50, 50).cpu()[:n]])      # prediction of post image
+                                      pred_img_post.view(-1, 1, 50, 50).cpu()[:n]])     # prediction of post image
                 save_image(comparison.cpu(),
                          './result/{}/reconstruction_test/reconstruct_epoch_{}.png'.format(folder_name, epoch), nrow=n)                                         
                 plot_sample(batch_data['image_bi_cur'][:n].detach().cpu().numpy(), 

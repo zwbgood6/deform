@@ -64,14 +64,18 @@ def plot_sample(img_before, img_after, resz_action, recon_action, directory):
     N = int(img_before.shape[0])
     for i in range(N):
         # upper row original
-        plt.subplot(2, N, i+1)
+        plt.subplot(3, N, i+1)
         rect(resz_action[i], "blue")
         plt.imshow(img_before[i].reshape((50,50)))
         plt.axis('off') 
-        # lower row reconstruction
-        plt.subplot(2, N, i+1+N)
+        # middle row reconstruction
+        plt.subplot(3, N, i+1+N)
         rect(recon_action[i], "red")
         plt.imshow(img_before[i].reshape((50,50)))
+        plt.axis('off')
+        # lower row: next image after action
+        plt.subplot(3, N, i+1+2*N)
+        plt.imshow(img_after[i].reshape((50,50)))
         plt.axis('off')
     plt.savefig(directory) 
     plt.close()

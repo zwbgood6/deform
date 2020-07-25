@@ -55,9 +55,9 @@ class CAE(nn.Module):
                                             nn.Conv2d(256, 256, 3, padding=1),
                                             nn.ReLU(),                                            
                                             nn.MaxPool2d(3, stride=2, padding=1)) 
-        self.fc3 = nn.Linear(256*6*6, latent_state_dim*latent_state_dim) # K: 9216 -> 6400
+        self.fc3 = nn.Linear(256*6*6+latent_act_dim, latent_state_dim*latent_state_dim) # K: 9216 -> 6400
         #self.fc32 = nn.Linear(3000, latent_state_dim*latent_state_dim) 
-        self.fc4 = nn.Linear(256*6*6 + latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200
+        #self.fc4 = nn.Linear(256*6*6 + latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200
         #self.fc42 = nn.Linear(3200, latent_state_dim*latent_act_dim)    
         # action
         self.fc5 = nn.Linear(4, latent_act_dim)
@@ -101,9 +101,9 @@ class CAE(nn.Module):
         # print('after convolution shape', x.shape)
         x = x.view(x.shape[0], -1)
         #print('x shape', x.shape)
-        xa = torch.cat((x,a), 1)
         #print('xu shape', xa.shape)
-        return relu(self.fc3(x)).view(-1, self.latent_state_dim, self.latent_state_dim), relu(self.fc4(xa)).view(-1, self.latent_act_dim, self.latent_state_dim)
+        xa = torch.cat((x,a), 1)
+        return relu(self.fc3(xa)).view(-1, self.latent_state_dim, self.latent_state_dim)
 
     def add_identity(self, K):
         # add identity matrix to matrix K
@@ -121,10 +121,10 @@ class CAE(nn.Module):
         # print('x_cur shape', x_cur.shape)
         # print('a shape', a.shape)
         # print('x_post shape', x_post.shape)
-        K_T, L_T = self.encoder_matrix(x_cur, a) 
+        K_T = self.encoder_matrix(x_cur, a) 
         # print('K_T shape', K_T.shape) 
         # print('L_T shape', L_T.shape)        
-        return g_cur, a, g_post, self.decoder(g_cur), self.decoder_act(a), K_T, L_T#self.control_matrix
+        return g_cur, g_post, self.decoder(g_cur), self.decoder_act(a), K_T
 
 # def get_latent_U(U):
 #     U_latent = []           
@@ -157,12 +157,12 @@ def predict():
             img_post = batch_data['image_bi_post']
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # prediction for current image
-            latent_img_pre, latent_act_pre, _, _, _, K_T_pre, L_T_pre = model(img_pre, act_pre, img_cur)
-            recon_latent_img_cur = get_next_state_linear(latent_img_pre, latent_act_pre, K_T_pre, L_T_pre)
+            latent_img_pre, _, _, _, K_T_pre = model(img_pre, act_pre, img_cur)
+            recon_latent_img_cur = get_next_state_linear_without_L(latent_img_pre, K_T_pre)
             recon_img_cur = model.decoder(recon_latent_img_cur)
             # prediction for post image
-            latent_img_cur, latent_act_cur, _, _, _, K_T_cur, L_T_cur = model(img_cur, act_cur, img_post)
-            recon_latent_img_post = get_next_state_linear(latent_img_cur, latent_act_cur, K_T_cur, L_T_cur)
+            latent_img_cur, _, _, _, K_T_cur = model(img_cur, act_cur, img_post)
+            recon_latent_img_post = get_next_state_linear_without_L(latent_img_cur, K_T_cur)
             recon_img_post = model.decoder(recon_latent_img_post)            
             if batch_idx % 10 == 0:
                 n = min(batch_data['image_bi_pre'].size(0), 8)
@@ -185,7 +185,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_freeze_Kp_Lpa'
+folder_name = 'test'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
