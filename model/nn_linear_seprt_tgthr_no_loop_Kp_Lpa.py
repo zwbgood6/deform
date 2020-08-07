@@ -1,4 +1,4 @@
-# separate two models, train g^t first, then train K and L
+# separate two models, train g^t first, then train g^, K and L
 from __future__ import print_function
 import argparse
 
@@ -281,7 +281,7 @@ def train_new(epoch, recon_model, dyn_model, epoch_thres=500):
         n = len(trainloader.dataset)      
         return train_loss/n, img_loss/n, act_loss/n, latent_loss/n, pred_loss/n
     else:
-        recon_model.eval()
+        recon_model.train()
         dyn_model.train()
         train_loss = 0
         img_loss = 0
@@ -299,6 +299,7 @@ def train_new(epoch, recon_model, dyn_model, epoch_thres=500):
             img_post = batch_data['image_bi_post']
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)        
             # optimization
+            recon_optimizer.zero_grad()
             dyn_optimizer.zero_grad()
             # model
             latent_img_cur, latent_act, latent_img_post, recon_img_cur, recon_act = recon_model(img_cur, act, img_post)
@@ -307,19 +308,20 @@ def train_new(epoch, recon_model, dyn_model, epoch_thres=500):
             pred_latent_img_post = get_next_state_linear(latent_img_cur, latent_act, K_T, L_T)
             pred_img_post = recon_model.decoder(pred_latent_img_post)        
             # loss
-            #loss_img = loss_function_img(recon_img_cur, img_cur)
-            #loss_act = loss_function_act(recon_act, act)
+            loss_img = loss_function_img(recon_img_cur, img_cur)
+            loss_act = loss_function_act(recon_act, act)
             loss_latent = loss_function_latent_linear(latent_img_cur, latent_img_post, latent_act, K_T, L_T) # TODO: add prediction loss, decode the latent state to predicted state     
             loss_predict = loss_function_pred_linear(img_post, latent_img_cur, latent_act, K_T, L_T)
-            loss = GAMMA_latent * loss_latent + GAMMA_pred * loss_predict
+            loss = loss_img + GAMMA_act * loss_act + GAMMA_latent * loss_latent + GAMMA_pred * loss_predict
             loss.backward()
             #plot_grad_flow(model.named_parameters(), folder_name)
             train_loss += loss.item()
-            #img_loss += loss_img.item()
-            #act_loss += GAMMA_act * loss_act.item()
+            img_loss += loss_img.item()
+            act_loss += GAMMA_act * loss_act.item()
             latent_loss += GAMMA_latent * loss_latent.item()
             pred_loss += GAMMA_pred * loss_predict.item()
             #torch.cuda.empty_cache() # prevent CUDA out of memory RuntimeError
+            recon_optimizer.step()
             dyn_optimizer.step()
             if batch_idx % 5 == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
