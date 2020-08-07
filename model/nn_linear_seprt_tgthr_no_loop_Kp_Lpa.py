@@ -1,4 +1,4 @@
-# separate two models, train g^t first, then train g^, K and L
+# separate two models, train g^t first, then train g^t, K and L
 from __future__ import print_function
 import argparse
 
@@ -433,9 +433,9 @@ writer = SummaryWriter()
 print('***** Preparing Data *****')
 total_img_num = 22515
 train_num = int(total_img_num * 0.8)
-image_paths_bi = create_image_path('rope_no_loop_all_resize_gray', total_img_num)
+image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
-resz_act_path = './rope_dataset/rope_no_loop_all_resize_gray/resize_actions.npy'
+resz_act_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
 #ori_act_path = './rope_dataset/rope_all_ori/actions.npy'
 resz_act = np.load(resz_act_path)
 #ori_act = np.load(ori_act_path)

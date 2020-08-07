@@ -37,7 +37,7 @@ class MyDataset(Dataset):
         resz_action_pre = self.resz_actions[index-1]
         resz_action_cur = self.resz_actions[index]
         # decide if action is valid
-        if resz_action_pre[4] == 0 or resz_action_cur[4] == 0:
+        if int(resz_action_pre[4]) == 0 or int(resz_action_cur[4]) == 0:
             return none_sample
 
         # load images (pre-transform images)        

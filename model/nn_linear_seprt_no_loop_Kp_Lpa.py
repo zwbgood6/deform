@@ -6,7 +6,7 @@ import torch
 from torch import nn, optim, sigmoid, tanh, relu
 from torch.nn import functional as F
 from torchvision.utils import save_image
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader
 from deform.model.create_dataset import *
 from deform.model.hidden_dynamics import *
@@ -403,7 +403,7 @@ parser.add_argument('--folder-name', default='test',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=1000, metavar='N',
+parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
@@ -425,15 +425,15 @@ args.cuda = not args.no_cuda and torch.cuda.is_available()
 torch.manual_seed(args.seed)
 
 # Write the output
-writer = SummaryWriter()
+#writer = SummaryWriter()
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 22515
+total_img_num = 1000#22515
 train_num = int(total_img_num * 0.8)
-image_paths_bi = create_image_path('rope_no_loop_all_resize_gray', total_img_num)
+image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
-resz_act_path = './rope_dataset/rope_no_loop_all_resize_gray/resize_actions.npy'
+resz_act_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
 #ori_act_path = './rope_dataset/rope_all_ori/actions.npy'
 resz_act = np.load(resz_act_path)
 #ori_act = np.load(ori_act_path)

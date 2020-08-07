@@ -176,8 +176,8 @@ def predict():
 
 print('***** Preparing Data *****')
 total_img_num = 1000#22515
-image_paths_bi = create_image_path('rope_no_loop_all_resize_gray', total_img_num)
-action_path = './rope_dataset/rope_no_loop_all_resize_gray/resize_actions.npy'
+image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
+action_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
 actions = np.load(action_path)
 dataset = MyDataset(image_paths_bi, actions, transform=ToTensor())   
 dataloader = DataLoader(dataset, batch_size=64,
