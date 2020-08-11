@@ -399,11 +399,11 @@ def test_new(epoch, recon_model, dyn_model):
 
 # args
 parser = argparse.ArgumentParser(description='CAE Rope Deform Example')
-parser.add_argument('--folder-name', default='test', 
+parser.add_argument('--folder-name', default='base', 
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
+parser.add_argument('--epochs', type=int, default=500, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
@@ -429,7 +429,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 1000#22515
+total_img_num = 22515
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
@@ -491,7 +491,7 @@ test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_
 
 
 for epoch in range(init_epoch, epochs+1):                                                
-    train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch, recon_model, dyn_model, epoch_thres=int(epochs/2))
+    train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch, recon_model, dyn_model, epoch_thres=int(epochs)) # change here
     test_loss, test_img_loss, test_act_loss, test_latent_loss, test_pred_loss = test_new(epoch, recon_model, dyn_model)
     train_loss_all.append(train_loss)
     train_img_loss_all.append(train_img_loss)

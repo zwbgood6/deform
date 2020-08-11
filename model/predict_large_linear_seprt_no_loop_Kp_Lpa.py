@@ -89,23 +89,31 @@ class CAE(nn.Module):
 class SysDynamics(nn.Module):
     def __init__(self, latent_state_dim=80, latent_act_dim=40):
         super(SysDynamics, self).__init__()
-        self.conv_layers_matrix = nn.Sequential(nn.Conv2d(1, 64, 3, padding=1),  
+        self.conv_layers_matrix = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
                                             nn.ReLU(),
                                             nn.MaxPool2d(3, stride=1),
+                                            nn.Conv2d(32, 64, 3, padding=1),  
+                                            nn.ReLU(),
+                                            nn.MaxPool2d(3, stride=1),                                            
                                             nn.Conv2d(64, 128, 3, padding=1), 
                                             nn.ReLU(),
                                             nn.MaxPool2d(3, stride=2),
-                                            nn.Conv2d(128, 256, 3, padding=1), # channel 1 32 64 64; the next batch size should be larger than 8, 4 corner features + 4 direction features
+                                            nn.Conv2d(128, 256, 3, padding=1), 
                                             nn.ReLU(),
                                             nn.MaxPool2d(3, stride=2),
-                                            nn.Conv2d(256, 256, 3, padding=1),
+                                            nn.Conv2d(256, 512, 3, padding=1), 
                                             nn.ReLU(),
-                                            nn.Conv2d(256, 256, 3, padding=1),
+                                            nn.MaxPool2d(3, stride=2),                                            
+                                            nn.Conv2d(512, 512, 3, padding=1),
+                                            nn.ReLU(),
+                                            nn.Conv2d(512, 512, 3, padding=1),
                                             nn.ReLU(),                                            
                                             nn.MaxPool2d(3, stride=2, padding=1)) 
-        self.fc3 = nn.Linear(256*6*6, latent_state_dim*latent_state_dim) # K: 9216 -> 6400
+        self.fc31 = nn.Linear(512*2*2, latent_state_dim*latent_state_dim) # K: 9216 -> 6400
+        self.fc32 = nn.Linear(latent_state_dim*latent_state_dim, latent_state_dim*latent_state_dim) # K: 9216 -> 6400
         #self.fc32 = nn.Linear(3000, latent_state_dim*latent_state_dim) 
-        self.fc4 = nn.Linear(256*6*6 + latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200        
+        self.fc41 = nn.Linear(512*2*2 + latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200  
+        self.fc42 = nn.Linear(latent_state_dim*latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200       
         self.fc9 = nn.Linear(4, latent_act_dim)
         self.fc10 = nn.Linear(latent_act_dim, latent_act_dim)
         # latent dim
@@ -123,7 +131,8 @@ class SysDynamics(nn.Module):
         #print('x shape', x.shape)
         xa = torch.cat((x,a), 1)
         #print('xu shape', xa.shape)
-        return relu(self.fc3(x)).view(-1, self.latent_state_dim, self.latent_state_dim), relu(self.fc4(xa)).view(-1, self.latent_act_dim, self.latent_state_dim)
+        return relu(self.fc32(relu(self.fc31(x)))).view(-1, self.latent_state_dim, self.latent_state_dim), \
+            relu(self.fc42(relu(self.fc41(xa)))).view(-1, self.latent_act_dim, self.latent_state_dim)
 
     def forward(self, x_cur, u):
         a = relu(self.fc10(relu(self.fc9(u))))  
@@ -175,7 +184,7 @@ def predict():
 
 
 print('***** Preparing Data *****')
-total_img_num = 22515
+total_img_num = 1000#22515
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
 action_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
 actions = np.load(action_path)
@@ -184,7 +193,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_Kp_Lpa_g_KL_cleandata_pred0'
+folder_name = 'test'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
