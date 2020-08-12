@@ -500,7 +500,7 @@ test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_
 
 
 for epoch in range(init_epoch, epochs+1):                                                
-    train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch, recon_model, dyn_model, epoch_thres=int(epochs)) # change here
+    train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch, recon_model, dyn_model, epoch_thres=int(epochs/2)) # change here
     test_loss, test_img_loss, test_act_loss, test_latent_loss, test_pred_loss = test_new(epoch, recon_model, dyn_model)
     train_loss_all.append(train_loss)
     train_img_loss_all.append(train_img_loss)
