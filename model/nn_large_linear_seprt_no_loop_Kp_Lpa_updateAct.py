@@ -1,4 +1,5 @@
-# separate two models, train g^t first, then train K and L
+# seprt: separate two models, train g^t first, then train K and L
+# updateAct: pass the trained latent action for matrix L, so we dont need to train to get latent action again
 from __future__ import print_function
 import argparse
 
@@ -121,8 +122,8 @@ class SysDynamics(nn.Module):
         #self.fc32 = nn.Linear(3000, latent_state_dim*latent_state_dim) 
         self.fc41 = nn.Linear(512*2*2 + latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200  
         self.fc42 = nn.Linear(latent_state_dim*latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200       
-        self.fc9 = nn.Linear(4, latent_act_dim)
-        self.fc10 = nn.Linear(latent_act_dim, latent_act_dim)
+        #self.fc9 = nn.Linear(4, latent_act_dim)
+        #self.fc10 = nn.Linear(latent_act_dim, latent_act_dim)
         # latent dim
         self.latent_act_dim = latent_act_dim
         self.latent_state_dim = latent_state_dim
@@ -141,8 +142,8 @@ class SysDynamics(nn.Module):
         return relu(self.fc32(relu(self.fc31(x)))).view(-1, self.latent_state_dim, self.latent_state_dim), \
             relu(self.fc42(relu(self.fc41(xa)))).view(-1, self.latent_act_dim, self.latent_state_dim)
 
-    def forward(self, x_cur, u):
-        a = relu(self.fc10(relu(self.fc9(u))))  
+    def forward(self, x_cur, a):
+        #a = relu(self.fc10(relu(self.fc9(u))))  
         K_T, L_T = self.encoder_matrix(x_cur, a) 
         # print('K_T shape', K_T.shape) 
         # print('L_T shape', L_T.shape)        
@@ -213,18 +214,18 @@ def loss_function_pred_linear(img_post, latent_img_pre, latent_act, K_T, L_T):
 #     latent_post = model.encoder(image_pre).detach().cpu().numpy().reshape(n,-1)  # TODO: change it to tensor rather than array
 #     return latent_post - latent_pre
 
-def constraint_loss(steps, idx, trainset, U_latent, L):
-    loss = 0
-    data = trainset.__getitem__(idx).float().to(device).view(-1, 1, 50, 50)
-    embed_state = model.encoder(data).detach().cpu().numpy()
-    for i in range(steps):
-        step = i + 1  
-        data_next = trainset.__getitem__(idx+step).float().to(device).view(-1, 1, 50, 50)
-        action = U_latent[idx:idx+step][:]
-        embed_state_next = torch.from_numpy(get_next_state(embed_state, action, L)).to(device).float()
-        recon_state_next = model.decoder(embed_state_next)#.detach().cpu()#.numpy()
-        loss += mse(recon_state_next, data_next)
-    return loss
+# def constraint_loss(steps, idx, trainset, U_latent, L):
+#     loss = 0
+#     data = trainset.__getitem__(idx).float().to(device).view(-1, 1, 50, 50)
+#     embed_state = model.encoder(data).detach().cpu().numpy()
+#     for i in range(steps):
+#         step = i + 1  
+#         data_next = trainset.__getitem__(idx+step).float().to(device).view(-1, 1, 50, 50)
+#         action = U_latent[idx:idx+step][:]
+#         embed_state_next = torch.from_numpy(get_next_state(embed_state, action, L)).to(device).float()
+#         recon_state_next = model.decoder(embed_state_next)#.detach().cpu()#.numpy()
+#         loss += mse(recon_state_next, data_next)
+#     return loss
 
 def train_new(epoch, recon_model, dyn_model, epoch_thres=500):
     if epoch < epoch_thres:
@@ -311,7 +312,7 @@ def train_new(epoch, recon_model, dyn_model, epoch_thres=500):
             dyn_optimizer.zero_grad()
             # model
             latent_img_cur, latent_act, latent_img_post, recon_img_cur, recon_act = recon_model(img_cur, act, img_post)
-            K_T, L_T = dyn_model(img_cur, act)
+            K_T, L_T = dyn_model(img_cur, latent_act)
             # prediction
             pred_latent_img_post = get_next_state_linear(latent_img_cur, latent_act, K_T, L_T)
             pred_img_post = recon_model.decoder(pred_latent_img_post)        
@@ -375,7 +376,7 @@ def test_new(epoch, recon_model, dyn_model):
             img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
             # model
             latent_img_cur, latent_act, latent_img_post, recon_img_cur, recon_act = recon_model(img_cur, act, img_post)
-            K_T, L_T = dyn_model(img_cur, act)
+            K_T, L_T = dyn_model(img_cur, latent_act)
             # prediction
             pred_latent_img_post = get_next_state_linear(latent_img_cur, latent_act, K_T, L_T)
             pred_img_post = recon_model.decoder(pred_latent_img_post)
