@@ -161,16 +161,17 @@ def predict():
             act_cur = act_cur.float().to(device).view(-1, 4)
             # post image
             img_post = batch_data['image_bi_post']
-            img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
-            # prediction for current image
+            img_post = img_post.float().to(device).view(-1, 1, 50, 50)   
+            # two step prediction            
+            # prediction for current image from pre image
             latent_img_pre, latent_act_pre, _, _, _ = recon_model(img_pre, act_pre, img_cur)
             K_T_pre, L_T_pre = dyn_model(img_pre, latent_act_pre)
             recon_latent_img_cur = get_next_state_linear(latent_img_pre, latent_act_pre, K_T_pre, L_T_pre)
             recon_img_cur = recon_model.decoder(recon_latent_img_cur)
-            # prediction for post image
-            latent_img_cur, latent_act_cur, _, _, _ = recon_model(img_cur, act_cur, img_post)
-            K_T_cur, L_T_cur = dyn_model(img_cur, latent_act_cur)
-            recon_latent_img_post = get_next_state_linear(latent_img_cur, latent_act_cur, K_T_cur, L_T_cur)
+            # prediction for post image from pre image
+            _, latent_act_cur, _, _, _ = recon_model(img_cur, act_cur, img_post)
+            K_T_cur, L_T_cur = dyn_model(recon_img_cur, latent_act_cur)
+            recon_latent_img_post = get_next_state_linear(recon_latent_img_cur, latent_act_cur, K_T_cur, L_T_cur)
             recon_img_post = recon_model.decoder(recon_latent_img_post)            
             if batch_idx % 10 == 0:
                 n = min(batch_data['image_bi_pre'].size(0), 8)
@@ -193,7 +194,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_update_act_act450'
+folder_name = 'test'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -208,7 +209,7 @@ dyn_model.load_state_dict(checkpoint['dyn_model_state_dict'])
 
 # prediction
 print('***** Start Prediction *****')
-step=1
+step=2 # Change this based on different prediction steps
 if not os.path.exists('./result/{}/prediction_full_step{}'.format(folder_name, step)):
     os.makedirs('./result/{}/prediction_full_step{}'.format(folder_name, step))
 predict()

@@ -114,8 +114,8 @@ class SysDynamics(nn.Module):
         #self.fc32 = nn.Linear(3000, latent_state_dim*latent_state_dim) 
         self.fc41 = nn.Linear(512*2*2 + latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200  
         self.fc42 = nn.Linear(latent_state_dim*latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200       
-        #self.fc9 = nn.Linear(4, latent_act_dim)
-        #self.fc10 = nn.Linear(latent_act_dim, latent_act_dim)
+        self.fc9 = nn.Linear(4, latent_act_dim)
+        self.fc10 = nn.Linear(latent_act_dim, latent_act_dim)
         # latent dim
         self.latent_act_dim = latent_act_dim
         self.latent_state_dim = latent_state_dim
@@ -134,8 +134,8 @@ class SysDynamics(nn.Module):
         return relu(self.fc32(relu(self.fc31(x)))).view(-1, self.latent_state_dim, self.latent_state_dim), \
             relu(self.fc42(relu(self.fc41(xa)))).view(-1, self.latent_act_dim, self.latent_state_dim)
 
-    def forward(self, x_cur, a):
-        #a = relu(self.fc10(relu(self.fc9(u))))  
+    def forward(self, x_cur, u):
+        a = relu(self.fc10(relu(self.fc9(u))))  
         K_T, L_T = self.encoder_matrix(x_cur, a) 
         # print('K_T shape', K_T.shape) 
         # print('L_T shape', L_T.shape)        
@@ -161,16 +161,17 @@ def predict():
             act_cur = act_cur.float().to(device).view(-1, 4)
             # post image
             img_post = batch_data['image_bi_post']
-            img_post = img_post.float().to(device).view(-1, 1, 50, 50)               
-            # prediction for current image
+            img_post = img_post.float().to(device).view(-1, 1, 50, 50)   
+            # two step prediction            
+            # prediction for current image from pre image
             latent_img_pre, latent_act_pre, _, _, _ = recon_model(img_pre, act_pre, img_cur)
-            K_T_pre, L_T_pre = dyn_model(img_pre, latent_act_pre)
+            K_T_pre, L_T_pre = dyn_model(img_pre, act_pre)
             recon_latent_img_cur = get_next_state_linear(latent_img_pre, latent_act_pre, K_T_pre, L_T_pre)
             recon_img_cur = recon_model.decoder(recon_latent_img_cur)
-            # prediction for post image
-            latent_img_cur, latent_act_cur, _, _, _ = recon_model(img_cur, act_cur, img_post)
-            K_T_cur, L_T_cur = dyn_model(img_cur, latent_act_cur)
-            recon_latent_img_post = get_next_state_linear(latent_img_cur, latent_act_cur, K_T_cur, L_T_cur)
+            # prediction for post image from pre image
+            _, latent_act_cur, _, _, _ = recon_model(img_cur, act_cur, img_post)
+            K_T_cur, L_T_cur = dyn_model(recon_img_cur, act_cur)
+            recon_latent_img_post = get_next_state_linear(recon_latent_img_cur, latent_act_cur, K_T_cur, L_T_cur)
             recon_img_post = recon_model.decoder(recon_latent_img_post)            
             if batch_idx % 10 == 0:
                 n = min(batch_data['image_bi_pre'].size(0), 8)
@@ -193,7 +194,7 @@ dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_update_act_act450'
+folder_name = 'test_act80_pred50'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -208,7 +209,7 @@ dyn_model.load_state_dict(checkpoint['dyn_model_state_dict'])
 
 # prediction
 print('***** Start Prediction *****')
-step=1
+step=2 # Change this based on different prediction steps
 if not os.path.exists('./result/{}/prediction_full_step{}'.format(folder_name, step)):
     os.makedirs('./result/{}/prediction_full_step{}'.format(folder_name, step))
 predict()

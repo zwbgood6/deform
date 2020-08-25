@@ -73,21 +73,179 @@ class MyDataset(Dataset):
     def __len__(self):
         return len(self.image_paths_bi)
 
-    # def transform_img(self, image, trans):    
-    #     image = TF.to_tensor(image) # pixel value range [0,1]
-    #     if self.transform:
-    #         image = TF.affine(image, angle=0, translate=trans, scale=0.0, shear=0.0)
-    #     # binarize image
-    #     image = image > 0.3
-    #     image = image.float()
-    #     return image
+class MyDatasetMultiPred4(Dataset):
+    '''
+    learn from https://discuss.pytorch.org/t/torchvision-transfors-how-to-perform-identical-transform-on-both-image-and-target/10606/5
+    '''    
+    def __init__(self, image_paths_bi, resize_actions, transform=None):
+        self.image_paths_bi = image_paths_bi # binary mask
+        #self.image_paths_ori = image_paths_ori # original
+        self.resz_actions = resize_actions
+        #self.actions = actions
+        self.transform = transform
 
-    # def transform_act(self, action, trans):
-    #     # transform based on trans
-    #     if self.transform:
-    #         action[:2] = action[:2] * np.array(trans)
-    #     # get first four elements in the action
-    #     return action[:4]
+    def __getitem__(self, index):
+        # try:
+        #     return super(MyDataset, self).__getitem__(index)
+        # except Exception as e:
+        #     print(e)    
+        n = self.__len__()
+        none_sample = {'image_bi_pre': None, 'image_bi_cur': None, 'image_bi_post': None, 'image_bi_post2': None, 'image_bi_post3': None,\
+            'resz_action_pre': None, 'resz_action_cur': None, 'resz_action_post': None, 'resz_action_post2': None}
+        # edge cases, use index in [1,n-1) 
+        if index == 0:
+            index = np.random.randint(1, n-3)
+        if index == n-1:
+            index = np.random.randint(1, n-3)
+        if index == n-2:
+            index = np.random.randint(1, n-3)                        
+        if index == n-3:
+            index = np.random.randint(1, n-3)
+
+        # load action 
+        resz_action_pre = self.resz_actions[index-1]
+        resz_action_cur = self.resz_actions[index]
+        resz_action_post = self.resz_actions[index+1]
+        resz_action_post2 = self.resz_actions[index+2]
+        # decide if action is valid
+        if int(resz_action_pre[4]) == 0 or int(resz_action_cur[4]) == 0 or int(resz_action_post[4]) == 0 or int(resz_action_post2[4]) == 0:
+            return none_sample
+
+        # load images (pre-transform images)        
+        image_bi_pre = Image.open(self.image_paths_bi[index-1])
+        image_bi_cur = Image.open(self.image_paths_bi[index])        
+        image_bi_post = Image.open(self.image_paths_bi[index+1])
+        image_bi_post2 = Image.open(self.image_paths_bi[index+2])
+        image_bi_post3 = Image.open(self.image_paths_bi[index+3])
+        #image_bi_pre = self.transform_img(image_bi_pre, trans)
+        #image_bi_post = self.transform_img(image_bi_post, trans)
+        #image_ori_pre = plt.imread(self.image_paths_ori[index])
+        #image_ori_post = plt.imread(self.image_paths_ori[index+1])
+
+        '''
+        sample = {state, action, next_state, 
+                  state, action, next_state}
+        image_bi_pre: 50*50, binary mask image pre-action
+        resz_action: resized x,y in action
+        image_bi_post: 50*50, binary mask image post-action
+        image_ori_pre: 240*240, original image pre-action
+        action: original action
+        image_ori_post: 50*50, original image post-action        
+        '''
+        # sample = {'image_bi_pre': image_bi_pre, 'resz_action': resz_action, 'image_bi_post': image_bi_post, 
+        #         'image_ori_pre': image_ori_pre, 'action': action, 'image_ori_post': image_ori_post}
+        sample = {'image_bi_pre': image_bi_pre, 'image_bi_cur': image_bi_cur, 'image_bi_post': image_bi_post, 'image_bi_post2': image_bi_post2, 'image_bi_post3': image_bi_post3,\
+            'resz_action_pre': resz_action_pre[:4], 'resz_action_cur': resz_action_cur[:4], 'resz_action_post': resz_action_post[:4], 'resz_action_post2': resz_action_post2[:4]}       
+
+        # random transformation in [-2,2]
+        #trans = None  
+        if self.transform:
+            sample = self.transform(sample)
+
+        return sample
+
+    def __len__(self):
+        return len(self.image_paths_bi)
+
+class MyDatasetMultiPred10(Dataset):
+    '''
+    learn from https://discuss.pytorch.org/t/torchvision-transfors-how-to-perform-identical-transform-on-both-image-and-target/10606/5
+    '''    
+    def __init__(self, image_paths_bi, resize_actions, transform=None):
+        self.image_paths_bi = image_paths_bi # binary mask
+        self.resz_actions = resize_actions
+        self.transform = transform
+
+    def __getitem__(self, index):   
+        n = self.__len__()
+        none_sample = {'image_bi_pre': None, 'image_bi_cur': None, 'image_bi_post': None, 'image_bi_post2': None, 'image_bi_post3': None,\
+            'image_bi_post4': None, 'image_bi_post5': None, 'image_bi_post6': None, 'image_bi_post7': None, 'image_bi_post8': None, 'image_bi_post9': None,\
+            'resz_action_pre': None, 'resz_action_cur': None, 'resz_action_post': None, 'resz_action_post2': None, 'resz_action_post3': None, 'resz_action_post4': None,\
+            'resz_action_post5': None, 'resz_action_post6': None, 'resz_action_post7': None, 'resz_action_post8': None}
+        # edge cases, use index in [1,n-1) 
+        if index == 0:
+            index = np.random.randint(1, n-9)
+        if index == n-1:
+            index = np.random.randint(1, n-9)
+        if index == n-2:
+            index = np.random.randint(1, n-9)                        
+        if index == n-3:
+            index = np.random.randint(1, n-9)
+        if index == n-4:
+            index = np.random.randint(1, n-9)
+        if index == n-5:
+            index = np.random.randint(1, n-9)
+        if index == n-6:
+            index = np.random.randint(1, n-9)
+        if index == n-7:
+            index = np.random.randint(1, n-9)
+        if index == n-8:
+            index = np.random.randint(1, n-9) 
+        if index == n-9:
+            index = np.random.randint(1, n-9)                                                            
+        # load action 
+        resz_action_pre = self.resz_actions[index-1]
+        resz_action_cur = self.resz_actions[index]
+        resz_action_post = self.resz_actions[index+1]
+        resz_action_post2 = self.resz_actions[index+2]
+        resz_action_post3 = self.resz_actions[index+3]
+        resz_action_post4 = self.resz_actions[index+4]
+        resz_action_post5 = self.resz_actions[index+5]
+        resz_action_post6 = self.resz_actions[index+6]
+        resz_action_post7 = self.resz_actions[index+7]
+        resz_action_post8 = self.resz_actions[index+8]
+        resz_action_post9 = self.resz_actions[index+9]                                                        
+        # decide if action is valid
+        if int(resz_action_pre[4]) == 0 or int(resz_action_cur[4]) == 0 \
+            or int(resz_action_post[4]) == 0 or int(resz_action_post2[4]) == 0 \
+            or int(resz_action_post3[4]) == 0 or int(resz_action_post4[4]) == 0 \
+            or int(resz_action_post5[4]) == 0 or int(resz_action_post6[4]) == 0 \
+            or int(resz_action_post7[4]) == 0 or int(resz_action_post8[4]) == 0 \
+            or int(resz_action_post9[4]) == 0:
+            return none_sample
+
+        # load images (pre-transform images)        
+        image_bi_pre = Image.open(self.image_paths_bi[index-1])
+        image_bi_cur = Image.open(self.image_paths_bi[index])        
+        image_bi_post = Image.open(self.image_paths_bi[index+1])
+        image_bi_post2 = Image.open(self.image_paths_bi[index+2])
+        image_bi_post3 = Image.open(self.image_paths_bi[index+3])
+        image_bi_post4 = Image.open(self.image_paths_bi[index+4])
+        image_bi_post5 = Image.open(self.image_paths_bi[index+5])
+        image_bi_post6 = Image.open(self.image_paths_bi[index+6])
+        image_bi_post7 = Image.open(self.image_paths_bi[index+7])
+        image_bi_post8 = Image.open(self.image_paths_bi[index+8])
+        image_bi_post9 = Image.open(self.image_paths_bi[index+9])                                                
+        #image_bi_pre = self.transform_img(image_bi_pre, trans)
+        #image_bi_post = self.transform_img(image_bi_post, trans)
+        #image_ori_pre = plt.imread(self.image_paths_ori[index])
+        #image_ori_post = plt.imread(self.image_paths_ori[index+1])
+
+        '''
+        sample = {state, action, next_state, 
+                  state, action, next_state}
+        image_bi_pre: 50*50, binary mask image pre-action
+        resz_action: resized x,y in action
+        image_bi_post: 50*50, binary mask image post-action
+        image_ori_pre: 240*240, original image pre-action
+        action: original action
+        image_ori_post: 50*50, original image post-action        
+        '''     
+        sample = {'image_bi_pre': image_bi_pre, 'image_bi_cur': image_bi_cur, 'image_bi_post': image_bi_post, 'image_bi_post2': image_bi_post2, 'image_bi_post3': image_bi_post3,\
+            'image_bi_post4': image_bi_post4, 'image_bi_post5': image_bi_post5, 'image_bi_post6': image_bi_post6, 'image_bi_post7': image_bi_post7, 'image_bi_post8': image_bi_post8, \
+            'image_bi_post9': image_bi_post9, \
+            'resz_action_pre': resz_action_pre[:4], 'resz_action_cur': resz_action_cur[:4], 'resz_action_post': resz_action_post[:4], 'resz_action_post2': resz_action_post2[:4], \
+            'resz_action_post3': resz_action_post3[:4], 'resz_action_post4': resz_action_post4[:4], 'resz_action_post5': resz_action_post5[:4], 'resz_action_post6': resz_action_post6[:4], \
+            'resz_action_post7': resz_action_post7[:4], 'resz_action_post8': resz_action_post8[:4]}
+        # random transformation in [-2,2]
+        #trans = None  
+        if self.transform:
+            sample = self.transform(sample)
+
+        return sample
+
+    def __len__(self):
+        return len(self.image_paths_bi)
 
 class Translation(object):
     '''Translate the image and action [-max_translation, max_translation]. e.g., [-10, 10]
@@ -183,6 +341,49 @@ class ToTensor(object):
         image_bi_cur = TF.to_tensor(image_bi_cur) > 0.3
         image_bi_post = TF.to_tensor(image_bi_post) > 0.3
         return {'image_bi_pre': image_bi_pre.float(), 'image_bi_cur': image_bi_cur.float(), 'image_bi_post': image_bi_post.float(), 'resz_action_pre': torch.tensor(resz_action_pre), 'resz_action_cur': torch.tensor(resz_action_cur)}
+
+class ToTensorMultiPred4(object):
+    '''convert ndarrays in sample to tensors
+    '''
+    def __call__(self, sample):
+        image_bi_pre, image_bi_cur, image_bi_post, image_bi_post2, image_bi_post3, resz_action_pre, resz_action_cur, resz_action_post, resz_action_post2 = \
+            sample['image_bi_pre'], sample['image_bi_cur'], sample['image_bi_post'], sample['image_bi_post2'], sample['image_bi_post3'], sample['resz_action_pre'], sample['resz_action_cur'], sample['resz_action_post'], sample['resz_action_post2']
+        # to tensor and binarize image
+        image_bi_pre = TF.to_tensor(image_bi_pre) > 0.3
+        image_bi_cur = TF.to_tensor(image_bi_cur) > 0.3
+        image_bi_post = TF.to_tensor(image_bi_post) > 0.3
+        image_bi_post2 = TF.to_tensor(image_bi_post2) > 0.3
+        image_bi_post3 = TF.to_tensor(image_bi_post3) > 0.3
+        return {'image_bi_pre': image_bi_pre.float(), 'image_bi_cur': image_bi_cur.float(), 'image_bi_post': image_bi_post.float(), 'image_bi_post2': image_bi_post2.float(), 'image_bi_post3': image_bi_post3.float(), \
+            'resz_action_pre': torch.tensor(resz_action_pre), 'resz_action_cur': torch.tensor(resz_action_cur), 'resz_action_post': torch.tensor(resz_action_post), 'resz_action_post2': torch.tensor(resz_action_post2)}
+
+class ToTensorMultiPred10(object):
+    '''convert ndarrays in sample to tensors
+    '''
+    def __call__(self, sample):
+        image_bi_pre, image_bi_cur, image_bi_post, image_bi_post2, image_bi_post3, image_bi_post4, image_bi_post5, image_bi_post6, image_bi_post7, image_bi_post8, image_bi_post9, \
+        resz_action_pre, resz_action_cur, resz_action_post, resz_action_post2, resz_action_post3, resz_action_post4, resz_action_post5, resz_action_post6, resz_action_post7, resz_action_post8 = \
+            sample['image_bi_pre'], sample['image_bi_cur'], sample['image_bi_post'], sample['image_bi_post2'], sample['image_bi_post3'], sample['image_bi_post4'], sample['image_bi_post5'],\
+            sample['image_bi_post6'], sample['image_bi_post7'], sample['image_bi_post8'], sample['image_bi_post9'], \
+            sample['resz_action_pre'], sample['resz_action_cur'], sample['resz_action_post'], sample['resz_action_post2'], sample['resz_action_post3'], sample['resz_action_post4'], sample['resz_action_post5'],\
+            sample['resz_action_post6'], sample['resz_action_post7'], sample['resz_action_post8']    
+        # to tensor and binarize image
+        image_bi_pre = TF.to_tensor(image_bi_pre) > 0.3
+        image_bi_cur = TF.to_tensor(image_bi_cur) > 0.3
+        image_bi_post = TF.to_tensor(image_bi_post) > 0.3
+        image_bi_post2 = TF.to_tensor(image_bi_post2) > 0.3
+        image_bi_post3 = TF.to_tensor(image_bi_post3) > 0.3
+        image_bi_post4 = TF.to_tensor(image_bi_post4) > 0.3
+        image_bi_post5 = TF.to_tensor(image_bi_post5) > 0.3
+        image_bi_post6 = TF.to_tensor(image_bi_post6) > 0.3
+        image_bi_post7 = TF.to_tensor(image_bi_post7) > 0.3
+        image_bi_post8 = TF.to_tensor(image_bi_post8) > 0.3
+        image_bi_post9 = TF.to_tensor(image_bi_post9) > 0.3
+        return {'image_bi_pre': image_bi_pre.float(), 'image_bi_cur': image_bi_cur.float(), 'image_bi_post': image_bi_post.float(), 'image_bi_post2': image_bi_post2.float(), 'image_bi_post3': image_bi_post3.float(), \
+            'image_bi_post4': image_bi_post4.float(), 'image_bi_post5': image_bi_post5.float(), 'image_bi_post6': image_bi_post6.float(), 'image_bi_post7': image_bi_post7.float(), 'image_bi_post8': image_bi_post8.float(), \
+            'image_bi_post9': image_bi_post9.float(), 'resz_action_pre': torch.tensor(resz_action_pre), 'resz_action_cur': torch.tensor(resz_action_cur), 'resz_action_post': torch.tensor(resz_action_post), \
+            'resz_action_post2': torch.tensor(resz_action_post2), 'resz_action_post3': torch.tensor(resz_action_post3), 'resz_action_post4': torch.tensor(resz_action_post4), 'resz_action_post5': torch.tensor(resz_action_post5), \
+            'resz_action_post6': torch.tensor(resz_action_post6), 'resz_action_post7': torch.tensor(resz_action_post7), 'resz_action_post8': torch.tensor(resz_action_post8)}
 
 def my_collate(batch):
     '''filer out the data when sample['image_bi_post']=None, which means action's last element is zero
