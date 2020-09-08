@@ -6,6 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.nn import functional as F
 from deform.model.create_dataset import *
 from deform.model.hidden_dynamics import *
+from deform.utils.utils import plot_sample_multi_step
 from torchvision.utils import save_image
 import os
 import math
@@ -68,7 +69,7 @@ class CAE(nn.Module):
 
     def decoder_act(self, u):
         h2 = relu(self.fc7(u))
-        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
+        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor) + self.add_tensor
 
     def forward(self, x_cur, u, x_post):
         # print('x_cur shape', x_cur.shape)
@@ -262,41 +263,87 @@ def predict():
             recon_latent_img_post9 = get_next_state_linear(recon_latent_img_post8, latent_act_post8, K_T_post8, L_T_post8)
             recon_img_post9 = recon_model.decoder(recon_latent_img_post9)                                                                                             
             if batch_idx % 10 == 0:
-                n = min(batch_data['image_bi_pre'].size(0), 10)
-                comparison_GT = torch.cat([batch_data['image_bi_pre'][:n],
-                                        batch_data['image_bi_cur'][:n],
-                                        batch_data['image_bi_post'][:n],
-                                        batch_data['image_bi_post2'][:n],
-                                        batch_data['image_bi_post3'][:n],
-                                        batch_data['image_bi_post4'][:n],
-                                        batch_data['image_bi_post5'][:n],
-                                        batch_data['image_bi_post6'][:n],
-                                        batch_data['image_bi_post7'][:n],
-                                        batch_data['image_bi_post8'][:n],
-                                        batch_data['image_bi_post9'][:n]])                                        
-                save_image(comparison_GT.cpu(),
-                         './result/{}/prediction_full_step{}/prediction_GT_batch{}.png'.format(folder_name, step, batch_idx), nrow=n)                                         
-                comparison_Pred = torch.cat([batch_data['image_bi_pre'][:n],
-                                        recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],
-                                        recon_img_post.view(-1, 1, 50, 50).cpu()[:n],
-                                        recon_img_post2.view(-1, 1, 50, 50).cpu()[:n],
-                                        recon_img_post3.view(-1, 1, 50, 50).cpu()[:n],
-                                        recon_img_post4.view(-1, 1, 50, 50).cpu()[:n],
-                                        recon_img_post5.view(-1, 1, 50, 50).cpu()[:n],
-                                        recon_img_post6.view(-1, 1, 50, 50).cpu()[:n],
-                                        recon_img_post7.view(-1, 1, 50, 50).cpu()[:n],
-                                        recon_img_post8.view(-1, 1, 50, 50).cpu()[:n],
-                                        recon_img_post9.view(-1, 1, 50, 50).cpu()[:n]])                                        
-                save_image(comparison_Pred.cpu(),
-                         './result/{}/prediction_full_step{}/prediction_Pred_batch{}.png'.format(folder_name, step, batch_idx), nrow=n) 
-
+                n = min(batch_data['image_bi_pre'].size(0), 1)
+                # comparison_GT = torch.cat([batch_data['image_bi_pre'][:n],
+                #                         batch_data['image_bi_cur'][:n],
+                #                         batch_data['image_bi_post'][:n],
+                #                         batch_data['image_bi_post2'][:n],
+                #                         batch_data['image_bi_post3'][:n],
+                #                         batch_data['image_bi_post4'][:n],
+                #                         batch_data['image_bi_post5'][:n],
+                #                         batch_data['image_bi_post6'][:n],
+                #                         batch_data['image_bi_post7'][:n],
+                #                         batch_data['image_bi_post8'][:n],
+                #                         batch_data['image_bi_post9'][:n]])                                        
+                # save_image(comparison_GT.cpu(),
+                #          './result/{}/prediction_full_step{}/prediction_GT_batch{}.png'.format(folder_name, step, batch_idx), nrow=n)                                         
+                # comparison_Pred = torch.cat([batch_data['image_bi_pre'][:n],
+                #                         recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],
+                #                         recon_img_post.view(-1, 1, 50, 50).cpu()[:n],
+                #                         recon_img_post2.view(-1, 1, 50, 50).cpu()[:n],
+                #                         recon_img_post3.view(-1, 1, 50, 50).cpu()[:n],
+                #                         recon_img_post4.view(-1, 1, 50, 50).cpu()[:n],
+                #                         recon_img_post5.view(-1, 1, 50, 50).cpu()[:n],
+                #                         recon_img_post6.view(-1, 1, 50, 50).cpu()[:n],
+                #                         recon_img_post7.view(-1, 1, 50, 50).cpu()[:n],
+                #                         recon_img_post8.view(-1, 1, 50, 50).cpu()[:n],
+                #                         recon_img_post9.view(-1, 1, 50, 50).cpu()[:n]])                                        
+                # save_image(comparison_Pred.cpu(),
+                #          './result/{}/prediction_full_step{}/prediction_Pred_batch{}.png'.format(folder_name, step, batch_idx), nrow=n) 
+                # GT
+                plot_sample_multi_step(batch_data['image_bi_pre'][:n].detach().cpu().numpy(), 
+                            batch_data['image_bi_cur'][:n].detach().cpu().numpy(), 
+                            batch_data['image_bi_post'][:n].detach().cpu().numpy(), 
+                            batch_data['image_bi_post2'][:n].detach().cpu().numpy(), 
+                            batch_data['image_bi_post3'][:n].detach().cpu().numpy(), 
+                            batch_data['image_bi_post4'][:n].detach().cpu().numpy(), 
+                            batch_data['image_bi_post5'][:n].detach().cpu().numpy(), 
+                            batch_data['image_bi_post6'][:n].detach().cpu().numpy(), 
+                            batch_data['image_bi_post7'][:n].detach().cpu().numpy(), 
+                            batch_data['image_bi_post8'][:n].detach().cpu().numpy(), 
+                            batch_data['image_bi_post9'][:n].detach().cpu().numpy(), 
+                            batch_data['resz_action_pre'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_cur'][:n].detach().cpu().numpy(), 
+                            batch_data['resz_action_post'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post2'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post3'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post4'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post5'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post6'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post7'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post8'][:n].detach().cpu().numpy(),
+                            './result/{}/prediction_with_action_step{}/recon_GT_epoch_{}.png'.format(folder_name, step, batch_idx))  
+                # Predicted
+                plot_sample_multi_step(batch_data['image_bi_pre'][:n].detach().cpu().numpy(),       
+                            recon_img_cur.view(-1, 1, 50, 50)[:n].detach().cpu().numpy(),                   
+                            recon_img_post.view(-1, 1, 50, 50)[:n].detach().cpu().numpy(), 
+                            recon_img_post2.view(-1, 1, 50, 50)[:n].detach().cpu().numpy(), 
+                            recon_img_post3.view(-1, 1, 50, 50)[:n].detach().cpu().numpy(), 
+                            recon_img_post4.view(-1, 1, 50, 50)[:n].detach().cpu().numpy(), 
+                            recon_img_post5.view(-1, 1, 50, 50)[:n].detach().cpu().numpy(), 
+                            recon_img_post6.view(-1, 1, 50, 50)[:n].detach().cpu().numpy(), 
+                            recon_img_post7.view(-1, 1, 50, 50)[:n].detach().cpu().numpy(), 
+                            recon_img_post8.view(-1, 1, 50, 50)[:n].detach().cpu().numpy(), 
+                            recon_img_post9.view(-1, 1, 50, 50)[:n].detach().cpu().numpy(),  
+                            batch_data['resz_action_pre'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_cur'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post2'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post3'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post4'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post5'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post6'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post7'][:n].detach().cpu().numpy(),
+                            batch_data['resz_action_post8'][:n].detach().cpu().numpy(),
+                            './result/{}/prediction_with_action_step{}/recon_Pred_epoch_{}.png'.format(folder_name, step, batch_idx))
+                            
 print('***** Preparing Data *****')
 total_img_num = 22515
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
 action_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
 actions = np.load(action_path)
 dataset = MyDatasetMultiPred10(image_paths_bi, actions, transform=ToTensorMultiPred10())   
-dataloader = DataLoader(dataset, batch_size=64,
+dataloader = DataLoader(dataset, batch_size=32,
                         shuffle=True, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
@@ -318,5 +365,7 @@ print('***** Start Prediction *****')
 step=10 # Change this based on different prediction steps
 if not os.path.exists('./result/{}/prediction_full_step{}'.format(folder_name, step)):
     os.makedirs('./result/{}/prediction_full_step{}'.format(folder_name, step))
+if not os.path.exists('./result/{}/prediction_with_action_step{}'.format(folder_name, step)):
+    os.makedirs('./result/{}/prediction_with_action_step{}'.format(folder_name, step))    
 predict()
 print('***** Finish Prediction *****')

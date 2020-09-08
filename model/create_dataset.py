@@ -368,17 +368,18 @@ class ToTensorMultiPred10(object):
             sample['resz_action_pre'], sample['resz_action_cur'], sample['resz_action_post'], sample['resz_action_post2'], sample['resz_action_post3'], sample['resz_action_post4'], sample['resz_action_post5'],\
             sample['resz_action_post6'], sample['resz_action_post7'], sample['resz_action_post8']    
         # to tensor and binarize image
-        image_bi_pre = TF.to_tensor(image_bi_pre) > 0.3
-        image_bi_cur = TF.to_tensor(image_bi_cur) > 0.3
-        image_bi_post = TF.to_tensor(image_bi_post) > 0.3
-        image_bi_post2 = TF.to_tensor(image_bi_post2) > 0.3
-        image_bi_post3 = TF.to_tensor(image_bi_post3) > 0.3
-        image_bi_post4 = TF.to_tensor(image_bi_post4) > 0.3
-        image_bi_post5 = TF.to_tensor(image_bi_post5) > 0.3
-        image_bi_post6 = TF.to_tensor(image_bi_post6) > 0.3
-        image_bi_post7 = TF.to_tensor(image_bi_post7) > 0.3
-        image_bi_post8 = TF.to_tensor(image_bi_post8) > 0.3
-        image_bi_post9 = TF.to_tensor(image_bi_post9) > 0.3
+        value = 0.1
+        image_bi_pre = TF.to_tensor(image_bi_pre) > value
+        image_bi_cur = TF.to_tensor(image_bi_cur) > value
+        image_bi_post = TF.to_tensor(image_bi_post) > value
+        image_bi_post2 = TF.to_tensor(image_bi_post2) > value
+        image_bi_post3 = TF.to_tensor(image_bi_post3) > value
+        image_bi_post4 = TF.to_tensor(image_bi_post4) > value
+        image_bi_post5 = TF.to_tensor(image_bi_post5) > value
+        image_bi_post6 = TF.to_tensor(image_bi_post6) > value
+        image_bi_post7 = TF.to_tensor(image_bi_post7) > value
+        image_bi_post8 = TF.to_tensor(image_bi_post8) > value
+        image_bi_post9 = TF.to_tensor(image_bi_post9) > value
         return {'image_bi_pre': image_bi_pre.float(), 'image_bi_cur': image_bi_cur.float(), 'image_bi_post': image_bi_post.float(), 'image_bi_post2': image_bi_post2.float(), 'image_bi_post3': image_bi_post3.float(), \
             'image_bi_post4': image_bi_post4.float(), 'image_bi_post5': image_bi_post5.float(), 'image_bi_post6': image_bi_post6.float(), 'image_bi_post7': image_bi_post7.float(), 'image_bi_post8': image_bi_post8.float(), \
             'image_bi_post9': image_bi_post9.float(), 'resz_action_pre': torch.tensor(resz_action_pre), 'resz_action_cur': torch.tensor(resz_action_cur), 'resz_action_post': torch.tensor(resz_action_post), \
