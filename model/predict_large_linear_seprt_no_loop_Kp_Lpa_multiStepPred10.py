@@ -69,7 +69,11 @@ class CAE(nn.Module):
 
     def decoder_act(self, u):
         h2 = relu(self.fc7(u))
-        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor) + self.add_tensor
+        if torch.cuda.is_available():
+            return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda()
+        else:
+            return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor) + self.add_tensor
+
 
     def forward(self, x_cur, u, x_post):
         # print('x_cur shape', x_cur.shape)
@@ -209,7 +213,7 @@ def predict():
             act_post8 = batch_data['resz_action_post8']
             act_post8 = act_post8.float().to(device).view(-1, 4)
             # post9 image
-            img_post9 = batch_data['image_bi_post9']
+            img_post9 = batch_data['image_bi_initialpost9']
             img_post9 = img_post9.float().to(device).view(-1, 1, 50, 50)                                                                                       
             # ten step prediction            
             # prediction for current image from pre image
