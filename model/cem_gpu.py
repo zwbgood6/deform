@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.linalg import det
 from numpy import sqrt
-from deform.model.dl_model import *
+from deform.model.dl_model_gpu import *
 from deform.model.create_dataset import *
 from deform.model.hidden_dynamics import get_next_state_linear
 import math
@@ -171,11 +171,11 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, step_i):
 
         #Execute action a{t}* with lowest loss 
         action_best = sorted_sample_actions[0]
-        torch.save(action_best, "./plan_result/action_best_step{}_N{}_K{}.pt".format(step_i, N, K))
+        torch.save(action_best.cpu(), "./plan_result/action_best_step{}_N{}_K{}.pt".format(step_i, N, K))
         #Observe new image I{t+1} 
         img_cur = generate_next_pred_state(recon_model, dyn_model, img_cur, action_best)
         comparison = torch.cat([img_initial, img_goal, img_cur])
-        save_image(comparison, "./plan_result/image_best_step{}_N{}_K{}.png".format(step_i, N, K))
+        save_image(comparison.cpu(), "./plan_result/image_best_step{}_N{}_K{}.png".format(step_i, N, K))
         print("***** Generate Next Predicted Image {}*****".format(t+1))
     #end for
     #comparison_gt = torch.cat([img_initial, img_goal, img_cur])
