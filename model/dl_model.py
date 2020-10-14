@@ -4,6 +4,7 @@ from torch.nn import functional as F
 from torchvision.utils import save_image
 #from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader
+import math
 
 class CAE(nn.Module):
     def __init__(self, latent_state_dim=80, latent_act_dim=80):
@@ -66,7 +67,7 @@ class CAE(nn.Module):
 
     def decoder_act(self, u):
         h2 = relu(self.fc7(u))
-        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
+        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor) + self.add_tensor
 
     def forward(self, x_cur, u, x_post):
         # print('x_cur shape', x_cur.shape)

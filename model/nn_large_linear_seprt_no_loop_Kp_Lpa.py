@@ -438,7 +438,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 22515
+total_img_num = 10#22515
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
