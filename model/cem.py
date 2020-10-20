@@ -13,6 +13,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.kl import kl_divergence
 import torchvision.transforms.functional as TF
 from PIL import Image
+from deform.utils.utils import plot_cem_sample
 
 def sample_action(I, mean=None, cov=None):
     '''TODO: unit test
@@ -23,8 +24,9 @@ def sample_action(I, mean=None, cov=None):
     action = torch.tensor([0]*4, dtype=torch.float) 
     multiplier = torch.tensor([50, 50, 2*math.pi, 0.14])
     addition = torch.tensor([0, 0, 0, 0.01])
+    thres = 253
     # consider edge case when I[0][0]!=0 in the beginning
-    if I[0][0][0][0] != 0:
+    if I[0][0][0][0] >= thres: # > thres means grasping white rope, first two zeros are unrelated dimensional index
         if ((mean is None) and (cov is None)):
             #action_base = np.random.uniform(low=0.0, high=1.0, size=4)
             action_base = Uniform(low=0.0, high=1.0).sample((4,))
@@ -37,8 +39,8 @@ def sample_action(I, mean=None, cov=None):
         #action = torch.mul(action_base, multiplier) + addition
         action[0], action[1] = 0, 0
         return action
-    # find grasping point
-    while I[0][0][torch.floor(action[0]).type(torch.LongTensor)][torch.floor(action[1]).type(torch.LongTensor)] == 0:
+    # find grasping point TODO: there is a problem here, CHECK!!
+    while I[0][0][torch.floor(action[0]).type(torch.LongTensor)][torch.floor(action[1]).type(torch.LongTensor)] < thres: # < thres means grasping black region, 255 is max pixtel intensity for white color 
         if ((mean is None) and (cov is None)):
             #action_base = np.random.uniform(low=0.0, high=1.0, size=4)
             action_base = Uniform(low=0.0, high=1.0).sample((4,))
@@ -116,7 +118,7 @@ def bhattacharyya(dist, cov1, cov2):
     d2 = np.log(det(cov) / sqrt(det(cov1) * det(cov2))) / 2
     return d1 + d2
 
-def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, step_i):
+def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, step_i):
     # TODO: unit test
     for t in range(T):
         if t==0:
@@ -158,7 +160,7 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, step_i):
                     continue                   
                 p = MultivariateNormal(mean, cov)
                 q = MultivariateNormal(mean_tmp, cov_tmp)
-                if kl_divergence(p, q) < 0.1: # 0.5 is okay, but not enough
+                if kl_divergence(p, q) < 0.3: # 0.5 is okay, but not enough
                     converge = True
                 # if bhattacharyya(mean_tmp-mean, cov_tmp, cov) < 0.2: # tune 0.2
                 #     converge = True
@@ -176,6 +178,12 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, step_i):
         img_cur = generate_next_pred_state(recon_model, dyn_model, img_cur, action_best)
         comparison = torch.cat([img_initial, img_goal, img_cur])
         save_image(comparison, "./plan_result/image_best_step{}_N{}_K{}.png".format(step_i, N, K))
+        plot_cem_sample(img_initial.detach().reshape((50,50)).cpu().numpy(), 
+                        img_goal.detach().reshape((50,50)).cpu().numpy(), 
+                        img_cur.detach().reshape((50,50)).cpu().numpy(), 
+                        resz_act[:4],  
+                        action_best.detach().cpu().numpy(), 
+                        './plan_result/03/compare_align_{}'.format(i))        
         print("***** Generate Next Predicted Image {}*****".format(t+1))
     #end for
     #comparison_gt = torch.cat([img_initial, img_goal, img_cur])
@@ -187,7 +195,7 @@ T = 1 # TODO: I cannot only check the correntness of T=1 now
 # total number of samples for action sequences
 N = 500
 # K samples to fit multivariate gaussian distribution (N>K, K>1)
-K = 50
+K = 50 # TODO: every action has its own distribution
 # length of action sequence
 H = 1 # 10-50
 # model
@@ -195,6 +203,11 @@ torch.manual_seed(1)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 recon_model = CAE().to(device)
 dyn_model = SysDynamics().to(device)
+
+# action
+# load GT action
+resz_act_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
+resz_act = np.load(resz_act_path)
 
 # checkpoint
 print('***** Load Checkpoint *****')
@@ -207,6 +220,7 @@ dyn_model.load_state_dict(checkpoint['dyn_model_state_dict'])
 total_img_num = 22515
 #train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
+
 
 #resz_act_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
 #resz_act = np.load(resz_act_path)
@@ -239,7 +253,7 @@ def get_image(i):
 # img_goal = img_goal.reshape((-1, 1, 50, 50)).type(torch.float)
 # img_initial = torch.FloatTensor(np.array(Image.open(image_paths_bi[0]))).reshape((-1, 1, 50, 50))
 # img_goal = torch.FloatTensor(np.array(Image.open(image_paths_bi[1]))).reshape((-1, 1, 50, 50))
-for i in range(9):
+for i in range(2,50):
     img_initial = get_image(i)
     img_goal = get_image(i+1)
-    main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, i)
+    main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act[i], i)

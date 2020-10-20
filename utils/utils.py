@@ -85,6 +85,20 @@ def rect(poke, c):
     dy = -200 * l * math.sin(t)
     plt.arrow(x, y, dx, dy, width=0.001, head_width=6, head_length=6, color=c)
 
+def plot_action(resz_action, recon_action, directory):
+    # from rope.ipynb in Berkeley's rope dataset file
+    plt.figure()
+    # upper row original
+    plt.subplot(1, 2, 1)
+    rect(resz_action[i], "blue")
+    plt.axis('off') 
+    # middle row reconstruction
+    plt.subplot(1, 2, 2)
+    rect(recon_action[i], "red")
+    plt.axis('off')
+    plt.savefig(directory) 
+    plt.close()
+
 def plot_sample(img_before, img_after, resz_action, recon_action, directory):
     # from rope.ipynb in Berkeley's rope dataset file
     plt.figure()
@@ -104,6 +118,31 @@ def plot_sample(img_before, img_after, resz_action, recon_action, directory):
         plt.subplot(3, N, i+1+2*N)
         plt.imshow(img_after[i].reshape((50,50)))
         plt.axis('off')
+    plt.savefig(directory) 
+    plt.close()
+
+def plot_cem_sample(img_before, img_after, img_after_pred, resz_action, recon_action, directory):
+    # from rope.ipynb in Berkeley's rope dataset file
+    plt.figure()
+    N = int(img_before.shape[0])
+    # upper row original
+    plt.subplot(2, 2, 1)
+    rect(resz_action, "blue")
+    plt.imshow(img_before.reshape((50,50)))
+    plt.axis('off') 
+    # middle row reconstruction
+    plt.subplot(2, 2, 2)
+    plt.imshow(img_after.reshape((50,50)))
+    plt.axis('off')
+    # lower row: next image after action
+    plt.subplot(2, 2, 3)
+    rect(recon_action, "blue")    
+    plt.imshow(img_before.reshape((50,50)))
+    plt.axis('off')
+    # lower row: next image after action
+    plt.subplot(2, 2, 4)
+    plt.imshow(img_after_pred.reshape((50,50)))
+    plt.axis('off')    
     plt.savefig(directory) 
     plt.close()
 
