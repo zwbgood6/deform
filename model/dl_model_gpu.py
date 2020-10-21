@@ -42,8 +42,8 @@ class CAE(nn.Module):
         self.fc7 = nn.Linear(latent_act_dim, latent_act_dim) # 10-100
         self.fc8 = nn.Linear(latent_act_dim, 4)  
         # add these in order to use GPU for parameters
-        self.mul_tensor = torch.tensor([50, 50, 2*math.pi, 0.14]) 
-        self.add_tensor = torch.tensor([0, 0, 0, 0.01]) 
+        self.mul_tensor = torch.tensor([50, 50, 2*math.pi, 0.14])
+        self.add_tensor = torch.tensor([0, 0, 0, 0.01])
         # latent dim
         #self.latent_act_dim = latent_act_dim
         #self.latent_state_dim = latent_state_dim
@@ -67,7 +67,7 @@ class CAE(nn.Module):
 
     def decoder_act(self, u):
         h2 = relu(self.fc7(u))
-        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda()
+        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
 
     def forward(self, x_cur, u, x_post):
         # print('x_cur shape', x_cur.shape)

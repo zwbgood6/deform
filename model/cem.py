@@ -24,9 +24,9 @@ def sample_action(I, mean=None, cov=None):
     action = torch.tensor([0]*4, dtype=torch.float) 
     multiplier = torch.tensor([50, 50, 2*math.pi, 0.14])
     addition = torch.tensor([0, 0, 0, 0.01])
-    thres = 253
+    thres = 0.9
     # consider edge case when I[0][0]!=0 in the beginning
-    if I[0][0][0][0] >= thres: # > thres means grasping white rope, first two zeros are unrelated dimensional index
+    if I[0][0][0][0] == 1.: # > thres means grasping white rope, first two zeros are unrelated dimensional index
         if ((mean is None) and (cov is None)):
             #action_base = np.random.uniform(low=0.0, high=1.0, size=4)
             action_base = Uniform(low=0.0, high=1.0).sample((4,))
@@ -40,7 +40,7 @@ def sample_action(I, mean=None, cov=None):
         action[0], action[1] = 0, 0
         return action
     # find grasping point TODO: there is a problem here, CHECK!!
-    while I[0][0][torch.floor(action[0]).type(torch.LongTensor)][torch.floor(action[1]).type(torch.LongTensor)] < thres: # < thres means grasping black region, 255 is max pixtel intensity for white color 
+    while I[0][0][torch.floor(action[0]).type(torch.LongTensor)][torch.floor(action[1]).type(torch.LongTensor)] != 1.: # < thres means grasping black region, 255 is max pixtel intensity for white color 
         if ((mean is None) and (cov is None)):
             #action_base = np.random.uniform(low=0.0, high=1.0, size=4)
             action_base = Uniform(low=0.0, high=1.0).sample((4,))
@@ -51,6 +51,7 @@ def sample_action(I, mean=None, cov=None):
             cov = add_eye(cov)
             action = MultivariateNormal(mean, cov).sample() # dont need to use multiplication and addition
             while torch.floor(action[0]).type(torch.LongTensor) >= 50 or torch.floor(action[1]).type(torch.LongTensor) >= 50:
+                cov = add_eye(cov)
                 action = MultivariateNormal(mean, cov).sample()
         #action = torch.mul(action_base, multiplier) + addition            
         #action = torch.mul(action_base, multiplier.cuda()) + addition.cuda()     
@@ -121,6 +122,7 @@ def bhattacharyya(dist, cov1, cov2):
 def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, step_i):
     # TODO: unit test
     for t in range(T):
+        print("***** Start Step {}".format(t))
         if t==0:
             img_cur = img_initial
         #Initialize Q with uniform distribution 
@@ -157,10 +159,11 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, st
                 if det(cov_tmp)==0:
                     mean_tmp = mean
                     cov_tmp = cov 
-                    continue                   
-                p = MultivariateNormal(mean, cov)
-                q = MultivariateNormal(mean_tmp, cov_tmp)
-                if kl_divergence(p, q) < 0.3: # 0.5 is okay, but not enough
+                    continue   
+                else:            
+                    p = MultivariateNormal(mean, cov)
+                    q = MultivariateNormal(mean_tmp, cov_tmp)
+                if kl_divergence(p, q) < 0.3: # 0.3 is okay
                     converge = True
                 # if bhattacharyya(mean_tmp-mean, cov_tmp, cov) < 0.2: # tune 0.2
                 #     converge = True
@@ -183,7 +186,7 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, st
                         img_cur.detach().reshape((50,50)).cpu().numpy(), 
                         resz_act[:4],  
                         action_best.detach().cpu().numpy(), 
-                        './plan_result/03/compare_align_{}'.format(i))        
+                        './plan_result/compare_align_{}.png'.format(i))        
         print("***** Generate Next Predicted Image {}*****".format(t+1))
     #end for
     #comparison_gt = torch.cat([img_initial, img_goal, img_cur])
@@ -193,14 +196,15 @@ T = 1 # TODO: I cannot only check the correntness of T=1 now
 # interation for CEM
 #iteration = 2
 # total number of samples for action sequences
-N = 500
+N = 500 # 500
 # K samples to fit multivariate gaussian distribution (N>K, K>1)
-K = 50 # TODO: every action has its own distribution
+K = 50 # 50 TODO: every action has its own distribution
 # length of action sequence
 H = 1 # 10-50
 # model
 torch.manual_seed(1)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("Device is:", device)
 recon_model = CAE().to(device)
 dyn_model = SysDynamics().to(device)
 
@@ -240,10 +244,7 @@ def get_image(i):
 # img_3 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
 # img_3 = img_3.reshape((-1, 1, 50, 50)).type(torch.float)
 # img_4 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
-# img_4 = img_4.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_5 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
-# img_5 = img_5.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_6 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
+# img_4 = img_4.reshape((                    cov = add_eye(cov) age.open(image_paths_bi[1])) > 0.3
 # img_6 = img_6.reshape((-1, 1, 50, 50)).type(torch.float)
 # img_7 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
 # img_7 = img_7.reshape((-1, 1, 50, 50)).type(torch.float)
@@ -253,7 +254,7 @@ def get_image(i):
 # img_goal = img_goal.reshape((-1, 1, 50, 50)).type(torch.float)
 # img_initial = torch.FloatTensor(np.array(Image.open(image_paths_bi[0]))).reshape((-1, 1, 50, 50))
 # img_goal = torch.FloatTensor(np.array(Image.open(image_paths_bi[1]))).reshape((-1, 1, 50, 50))
-for i in range(2,50):
+for i in range(0, 1):
     img_initial = get_image(i)
     img_goal = get_image(i+1)
     main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act[i], i)
