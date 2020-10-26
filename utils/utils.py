@@ -81,8 +81,8 @@ def create_folder(folder_name):
 def rect(poke, c, label=None):
     # from rope.ipynb in Berkeley's rope dataset file
     x, y, t, l = poke
-    dx = -200 * l * math.cos(t)
-    dy = -200 * l * math.sin(t)
+    dx = -100 * l * math.cos(t)
+    dy = -100 * l * math.sin(t)
     arrow = plt.arrow(x, y, dx, dy, width=0.001, head_width=6, head_length=6, color=c, label=label)        
     #plt.legend([arrow,], ['My label',])
 
@@ -129,20 +129,20 @@ def plot_cem_sample(img_before, img_after, img_after_pred, resz_action, recon_ac
     # upper row original
     plt.subplot(2, 2, 1)
     rect(resz_action, "blue", "Ground Truth Action")
-    plt.imshow(img_before.reshape((50,50)), cmap='binary')
+    plt.imshow(img_before.reshape((50,50)), cmap='gray')
     plt.axis('off') 
     # middle row reconstruction
     plt.subplot(2, 2, 2)
-    plt.imshow(img_after.reshape((50,50)), cmap='binary')
+    plt.imshow(img_after.reshape((50,50)), cmap='gray')
     plt.axis('off')
     # lower row: next image after action
     plt.subplot(2, 2, 3)
     rect(recon_action, "red", "Sampled Action")    
-    plt.imshow(img_before.reshape((50,50)), cmap='binary')
+    plt.imshow(img_before.reshape((50,50)), cmap='gray')
     plt.axis('off')
     # lower row: next image after action
     plt.subplot(2, 2, 4)
-    plt.imshow(img_after_pred.reshape((50,50)), cmap='binary')
+    plt.imshow(img_after_pred.reshape((50,50)), cmap='gray')
     plt.axis('off')    
     plt.savefig(directory) 
     plt.close()
