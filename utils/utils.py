@@ -78,12 +78,13 @@ def create_folder(folder_name):
     if not os.path.exists('./result/' + folder_name + '/reconstruction_act_test'):
         os.makedirs('./result/' + folder_name + '/reconstruction_act_test')    
 
-def rect(poke, c):
+def rect(poke, c, label=None):
     # from rope.ipynb in Berkeley's rope dataset file
     x, y, t, l = poke
     dx = -200 * l * math.cos(t)
     dy = -200 * l * math.sin(t)
-    plt.arrow(x, y, dx, dy, width=0.001, head_width=6, head_length=6, color=c)
+    arrow = plt.arrow(x, y, dx, dy, width=0.001, head_width=6, head_length=6, color=c, label=label)        
+    #plt.legend([arrow,], ['My label',])
 
 def plot_action(resz_action, recon_action, directory):
     # from rope.ipynb in Berkeley's rope dataset file
@@ -124,24 +125,24 @@ def plot_sample(img_before, img_after, resz_action, recon_action, directory):
 def plot_cem_sample(img_before, img_after, img_after_pred, resz_action, recon_action, directory):
     # from rope.ipynb in Berkeley's rope dataset file
     plt.figure()
-    N = int(img_before.shape[0])
+    #N = int(img_before.shape[0])
     # upper row original
     plt.subplot(2, 2, 1)
-    rect(resz_action, "blue")
-    plt.imshow(img_before.reshape((50,50)))
+    rect(resz_action, "blue", "Ground Truth Action")
+    plt.imshow(img_before.reshape((50,50)), cmap='binary')
     plt.axis('off') 
     # middle row reconstruction
     plt.subplot(2, 2, 2)
-    plt.imshow(img_after.reshape((50,50)))
+    plt.imshow(img_after.reshape((50,50)), cmap='binary')
     plt.axis('off')
     # lower row: next image after action
     plt.subplot(2, 2, 3)
-    rect(recon_action, "blue")    
-    plt.imshow(img_before.reshape((50,50)))
+    rect(recon_action, "red", "Sampled Action")    
+    plt.imshow(img_before.reshape((50,50)), cmap='binary')
     plt.axis('off')
     # lower row: next image after action
     plt.subplot(2, 2, 4)
-    plt.imshow(img_after_pred.reshape((50,50)))
+    plt.imshow(img_after_pred.reshape((50,50)), cmap='binary')
     plt.axis('off')    
     plt.savefig(directory) 
     plt.close()

@@ -14,6 +14,7 @@ from torch.distributions.kl import kl_divergence
 import torchvision.transforms.functional as TF
 from PIL import Image
 from deform.utils.utils import plot_cem_sample
+import os
 
 def sample_action(I, mean=None, cov=None):
     '''TODO: unit test
@@ -160,7 +161,7 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, st
                     continue                   
                 p = MultivariateNormal(mean, cov)
                 q = MultivariateNormal(mean_tmp, cov_tmp)
-                if kl_divergence(p, q) < 0.3: # 0.5 is okay, but not enough
+                if kl_divergence(p, q) < 10000: # 0.5 is okay, but not enough
                     converge = True
                 # if bhattacharyya(mean_tmp-mean, cov_tmp, cov) < 0.2: # tune 0.2
                 #     converge = True
@@ -173,27 +174,32 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, st
 
         #Execute action a{t}* with lowest loss 
         action_best = sorted_sample_actions[0]
-        torch.save(action_best, "./plan_result/action_best_step{}_N{}_K{}.pt".format(step_i, N, K))
+        torch.save(action_best, "./plan_result/{}/action_best_step{}_N{}_K{}.pt".format(plan_folder_name, step_i, N, K))
         #Observe new image I{t+1} 
         img_cur = generate_next_pred_state(recon_model, dyn_model, img_cur, action_best)
         comparison = torch.cat([img_initial, img_goal, img_cur])
-        save_image(comparison, "./plan_result/image_best_step{}_N{}_K{}.png".format(step_i, N, K))
+        save_image(comparison, "./plan_result/{}/image_best_step{}_N{}_K{}.png".format(plan_folder_name, step_i, N, K))
         plot_cem_sample(img_initial.detach().reshape((50,50)).cpu().numpy(), 
                         img_goal.detach().reshape((50,50)).cpu().numpy(), 
                         img_cur.detach().reshape((50,50)).cpu().numpy(), 
                         resz_act[:4],  
                         action_best.detach().cpu().numpy(), 
-                        './plan_result/03/compare_align_{}'.format(i))        
+                        './plan_result/{}/compare_align_{}.png'.format(plan_folder_name, i))        
         print("***** Generate Next Predicted Image {}*****".format(t+1))
     #end for
     #comparison_gt = torch.cat([img_initial, img_goal, img_cur])
     print("***** End Planning *****")
+
+# plan result folder name
+plan_folder_name = 'test'
+if not os.path.exists('./plan_result/{}'.format(plan_folder_name)):
+    os.makedirs('./plan_result/{}'.format(plan_folder_name))
 # time step to execute the action
 T = 1 # TODO: I cannot only check the correntness of T=1 now
-# interation for CEM
+# iteration for CEM
 #iteration = 2
 # total number of samples for action sequences
-N = 500
+N = 100
 # K samples to fit multivariate gaussian distribution (N>K, K>1)
 K = 50 # TODO: every action has its own distribution
 # length of action sequence
@@ -231,29 +237,7 @@ def get_image(i):
     img = TF.to_tensor(Image.open(image_paths_bi[i])) > 0.3
     return img.reshape((-1, 1, 50, 50)).type(torch.float)
 
-# img_initial = TF.to_tensor(Image.open(image_paths_bi[0])) > 0.3
-# img_initial = img_initial.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_1 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
-# img_1 = img_1.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_2 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
-# img_2 = img_2.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_3 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
-# img_3 = img_3.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_4 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
-# img_4 = img_4.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_5 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
-# img_5 = img_5.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_6 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
-# img_6 = img_6.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_7 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
-# img_7 = img_7.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_8 = TF.to_tensor(Image.open(image_paths_bi[1])) > 0.3
-# img_8 = img_8.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_goal = TF.to_tensor(Image.open(image_paths_bi[T-1])) > 0.3
-# img_goal = img_goal.reshape((-1, 1, 50, 50)).type(torch.float)
-# img_initial = torch.FloatTensor(np.array(Image.open(image_paths_bi[0]))).reshape((-1, 1, 50, 50))
-# img_goal = torch.FloatTensor(np.array(Image.open(image_paths_bi[1]))).reshape((-1, 1, 50, 50))
-for i in range(2,50):
+for i in range(0,1):
     img_initial = get_image(i)
     img_goal = get_image(i+1)
     main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act[i], i)
