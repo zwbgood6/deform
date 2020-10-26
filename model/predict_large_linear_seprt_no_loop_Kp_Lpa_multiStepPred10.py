@@ -213,7 +213,7 @@ def predict():
             act_post8 = batch_data['resz_action_post8']
             act_post8 = act_post8.float().to(device).view(-1, 4)
             # post9 image
-            img_post9 = batch_data['image_bi_initialpost9']
+            img_post9 = batch_data['image_bi_post9']
             img_post9 = img_post9.float().to(device).view(-1, 1, 50, 50)                                                                                       
             # ten step prediction            
             # prediction for current image from pre image
@@ -268,33 +268,33 @@ def predict():
             recon_img_post9 = recon_model.decoder(recon_latent_img_post9)                                                                                             
             if batch_idx % 10 == 0:
                 n = min(batch_data['image_bi_pre'].size(0), 1)
-                # comparison_GT = torch.cat([batch_data['image_bi_pre'][:n],
-                #                         batch_data['image_bi_cur'][:n],
-                #                         batch_data['image_bi_post'][:n],
-                #                         batch_data['image_bi_post2'][:n],
-                #                         batch_data['image_bi_post3'][:n],
-                #                         batch_data['image_bi_post4'][:n],
-                #                         batch_data['image_bi_post5'][:n],
-                #                         batch_data['image_bi_post6'][:n],
-                #                         batch_data['image_bi_post7'][:n],
-                #                         batch_data['image_bi_post8'][:n],
-                #                         batch_data['image_bi_post9'][:n]])                                        
-                # save_image(comparison_GT.cpu(),
-                #          './result/{}/prediction_full_step{}/prediction_GT_batch{}.png'.format(folder_name, step, batch_idx), nrow=n)                                         
-                # comparison_Pred = torch.cat([batch_data['image_bi_pre'][:n],
-                #                         recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],
-                #                         recon_img_post.view(-1, 1, 50, 50).cpu()[:n],
-                #                         recon_img_post2.view(-1, 1, 50, 50).cpu()[:n],
-                #                         recon_img_post3.view(-1, 1, 50, 50).cpu()[:n],
-                #                         recon_img_post4.view(-1, 1, 50, 50).cpu()[:n],
-                #                         recon_img_post5.view(-1, 1, 50, 50).cpu()[:n],
-                #                         recon_img_post6.view(-1, 1, 50, 50).cpu()[:n],
-                #                         recon_img_post7.view(-1, 1, 50, 50).cpu()[:n],
-                #                         recon_img_post8.view(-1, 1, 50, 50).cpu()[:n],
-                #                         recon_img_post9.view(-1, 1, 50, 50).cpu()[:n]])                                        
-                # save_image(comparison_Pred.cpu(),
-                #          './result/{}/prediction_full_step{}/prediction_Pred_batch{}.png'.format(folder_name, step, batch_idx), nrow=n) 
-                # GT
+                comparison_GT = torch.cat([batch_data['image_bi_pre'][:n],
+                                        batch_data['image_bi_cur'][:n],
+                                        batch_data['image_bi_post'][:n],
+                                        batch_data['image_bi_post2'][:n],
+                                        batch_data['image_bi_post3'][:n],
+                                        batch_data['image_bi_post4'][:n],
+                                        batch_data['image_bi_post5'][:n],
+                                        batch_data['image_bi_post6'][:n],
+                                        batch_data['image_bi_post7'][:n],
+                                        batch_data['image_bi_post8'][:n],
+                                        batch_data['image_bi_post9'][:n]])                                        
+                save_image(comparison_GT.cpu(),
+                         './result/{}/prediction_full_step{}/prediction_GT_batch{}.png'.format(folder_name, step, batch_idx), nrow=n)                                         
+                comparison_Pred = torch.cat([batch_data['image_bi_pre'][:n],
+                                        recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],
+                                        recon_img_post.view(-1, 1, 50, 50).cpu()[:n],
+                                        recon_img_post2.view(-1, 1, 50, 50).cpu()[:n],
+                                        recon_img_post3.view(-1, 1, 50, 50).cpu()[:n],
+                                        recon_img_post4.view(-1, 1, 50, 50).cpu()[:n],
+                                        recon_img_post5.view(-1, 1, 50, 50).cpu()[:n],
+                                        recon_img_post6.view(-1, 1, 50, 50).cpu()[:n],
+                                        recon_img_post7.view(-1, 1, 50, 50).cpu()[:n],
+                                        recon_img_post8.view(-1, 1, 50, 50).cpu()[:n],
+                                        recon_img_post9.view(-1, 1, 50, 50).cpu()[:n]])                                        
+                save_image(comparison_Pred.cpu(),
+                         './result/{}/prediction_full_step{}/prediction_Pred_batch{}.png'.format(folder_name, step, batch_idx), nrow=n) 
+                #GT
                 plot_sample_multi_step(batch_data['image_bi_pre'][:n].detach().cpu().numpy(), 
                             batch_data['image_bi_cur'][:n].detach().cpu().numpy(), 
                             batch_data['image_bi_post'][:n].detach().cpu().numpy(), 
@@ -347,8 +347,8 @@ image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_i
 action_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
 actions = np.load(action_path)
 dataset = MyDatasetMultiPred10(image_paths_bi, actions, transform=ToTensorMultiPred10())   
-dataloader = DataLoader(dataset, batch_size=32,
-                        shuffle=True, num_workers=4, collate_fn=my_collate)                                             
+dataloader = DataLoader(dataset, batch_size=16, # batch size 32 to 16
+                        shuffle=True, num_workers=4, collate_fn=my_collate)    # num_workers 4->1                                         
 print('***** Finish Preparing Data *****')
 
 folder_name = 'test_act80_pred30'
@@ -366,7 +366,7 @@ dyn_model.load_state_dict(checkpoint['dyn_model_state_dict'])
 
 # prediction
 print('***** Start Prediction *****')
-step=10 # Change this based on different prediction steps
+step=101 # Change this based on different prediction steps
 if not os.path.exists('./result/{}/prediction_full_step{}'.format(folder_name, step)):
     os.makedirs('./result/{}/prediction_full_step{}'.format(folder_name, step))
 if not os.path.exists('./result/{}/prediction_with_action_step{}'.format(folder_name, step)):
