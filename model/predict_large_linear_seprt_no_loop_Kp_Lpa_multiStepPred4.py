@@ -196,7 +196,7 @@ def predict():
             recon_latent_img_post3 = get_next_state_linear(recon_latent_img_post2, latent_act_post2, K_T_post2, L_T_post2)
             recon_img_post3 = recon_model.decoder(recon_latent_img_post3)                        
             if batch_idx % 10 == 0:
-                n = min(batch_data['image_bi_pre'].size(0), 8)
+                n = min(batch_data['image_bi_pre'].size(0), 16)
                 comparison = torch.cat([batch_data['image_bi_pre'][:n],
                                         batch_data['image_bi_cur'][:n],
                                         recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],
@@ -211,16 +211,16 @@ def predict():
 
 
 print('***** Preparing Data *****')
-total_img_num = 22515
+total_img_num = 100#22515
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
 action_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
 actions = np.load(action_path)
 dataset = MyDatasetMultiPred4(image_paths_bi, actions, transform=ToTensorMultiPred4())   
 dataloader = DataLoader(dataset, batch_size=64,
-                        shuffle=True, num_workers=4, collate_fn=my_collate)                                             
+                        shuffle=False, num_workers=4, collate_fn=my_collate)                                             
 print('***** Finish Preparing Data *****')
 
-folder_name = 'test_act80_pred20'
+folder_name = 'test_act80_pred30'
 PATH = './result/{}/checkpoint'.format(folder_name)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

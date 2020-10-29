@@ -120,7 +120,7 @@ def bhattacharyya(dist, cov1, cov2):
     d2 = np.log(det(cov) / sqrt(det(cov1) * det(cov2))) / 2
     return d1 + d2
 
-def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, step_i):
+def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, step_i, KL):
     # TODO: unit test
     for t in range(T):
         print("***** Start Step {}".format(t))
@@ -164,7 +164,7 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, st
                 else:            
                     p = MultivariateNormal(mean, cov)
                     q = MultivariateNormal(mean_tmp, cov_tmp)
-                if kl_divergence(p, q) < 1000: # 0.3 is okay
+                if kl_divergence(p, q) < KL: # 0.3 is okay
                     converge = True
                 # if bhattacharyya(mean_tmp-mean, cov_tmp, cov) < 0.2: # tune 0.2
                 #     converge = True
@@ -176,25 +176,28 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, st
     #end for
 
         #Execute action a{t}* with lowest loss 
-        action_best = sorted_sample_actions[0]
-        torch.save(action_best, "./plan_result/{}/action_best_step{}_N{}_K{}.pt".format(plan_folder_name, step_i, N, K))
+        action_best = sorted_sample_actions[0] 
+        action_loss = ((action_best.detach().cpu().numpy()-resz_act[:4])**2).mean(axis=None)
+        #torch.save(action_best, "./plan_result/{}/action_best_step{}_N{}_K{}.pt".format(plan_folder_name, step_i, N, K))
         #Observe new image I{t+1} 
         img_cur = generate_next_pred_state(recon_model, dyn_model, img_cur, action_best)
-        comparison = torch.cat([img_initial, img_goal, img_cur])
-        save_image(comparison, "./plan_result/{}/image_best_step{}_N{}_K{}.png".format(plan_folder_name, step_i, N, K))
-        plot_cem_sample(img_initial.detach().reshape((50,50)).cpu().numpy(), 
-                        img_goal.detach().reshape((50,50)).cpu().numpy(), 
-                        img_cur.detach().reshape((50,50)).cpu().numpy(), 
-                        resz_act[:4],  
-                        action_best.detach().cpu().numpy(), 
-                        './plan_result/{}/compare_align_{}.png'.format(plan_folder_name, i))        
+        img_loss = F.binary_cross_entropy(img_cur.view(-1, 2500), img_goal.view(-1, 2500), reduction='mean')
+        # comparison = torch.cat([img_initial, img_goal, img_cur])
+        # save_image(comparison, "./plan_result/{}/image_best_step{}_N{}_K{}.png".format(plan_folder_name, step_i, N, K))
+        # plot_cem_sample(img_initial.detach().reshape((50,50)).cpu().numpy(), 
+        #                 img_goal.detach().reshape((50,50)).cpu().numpy(), 
+        #                 img_cur.detach().reshape((50,50)).cpu().numpy(), 
+        #                 resz_act[:4],  
+        #                 action_best.detach().cpu().numpy(), 
+        #                 './plan_result/{}/compare_align_{}.png'.format(plan_folder_name, i))        
         print("***** Generate Next Predicted Image {}*****".format(t+1))
     #end for
     #comparison_gt = torch.cat([img_initial, img_goal, img_cur])
     print("***** End Planning *****")
+    return action_loss, img_loss.detach().cpu().numpy()
 
 # plan result folder name
-plan_folder_name = 'test_KL1000'
+plan_folder_name = 'curve_KL'
 if not os.path.exists('./plan_result/{}'.format(plan_folder_name)):
     os.makedirs('./plan_result/{}'.format(plan_folder_name))
 # time step to execute the action
@@ -232,16 +235,20 @@ total_img_num = 22515
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
 
 
-#resz_act_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
-#resz_act = np.load(resz_act_path)
-
-#dataset = MyDataset(image_paths_bi, resz_act, transform=ToTensor())
-
 def get_image(i):
     img = TF.to_tensor(Image.open(image_paths_bi[i])) > 0.3
     return img.reshape((-1, 1, 50, 50)).type(torch.float)
 
-for i in range(0,1):
-    img_initial = get_image(i)
-    img_goal = get_image(i+1)
-    main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act[i], i)
+
+
+for KL in [0.1, 0.5, 1, 10]:
+    action_loss_all = []
+    img_loss_all = []
+    for i in range(20000, 20010):
+        img_initial = get_image(i)
+        img_goal = get_image(i+1)
+        action_loss, img_loss = main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act[i], i, KL)
+        action_loss_all.append(action_loss)
+        img_loss_all.append(img_loss)
+    np.save('./plan_result/{}/KL_action_{}.npy'.format(plan_folder_name, KL), action_loss_all)
+    np.save('./plan_result/{}/KL_image_{}.npy'.format(plan_folder_name, KL), img_loss_all)

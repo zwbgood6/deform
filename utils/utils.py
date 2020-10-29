@@ -566,6 +566,9 @@ def save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act
     if L is not None:
         np.save('./result/{}/control_matrix.npy'.format(folder_name), L)                   
 
+def save_e2c_data(folder_name, epochs, train_loss_all, test_loss_all):
+    np.save('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), train_loss_all)
+    np.save('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), test_loss_all)
 
 # epochs = 800
 # folder_name = 'test_freeze_Kp_Lpa'
