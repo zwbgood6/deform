@@ -125,12 +125,12 @@ class E2C(nn.Module):
     def transition(self, h, Q, u):
         batch_size = h.size()[0]
         v, r = self.trans(h).chunk(2, dim=1)
-        v1 = v.unsqueeze(2)
-        rT = r.unsqueeze(1)
+        v1 = v.unsqueeze(2).cpu()
+        rT = r.unsqueeze(1).cpu()
         I = Variable(torch.eye(self.dim_z).repeat(batch_size, 1, 1))
         if rT.data.is_cuda:
-            I.dada.cuda()
-        A = I.add(v1.bmm(rT))
+            I.data.cuda()
+        A = I.add(v1.bmm(rT)).cuda()
 
         B = self.fc_B(h).view(-1, self.dim_z, self.dim_u)
         o = self.fc_o(h).reshape((-1, self.dim_z, 1))
@@ -148,10 +148,10 @@ class E2C(nn.Module):
         self.z_mean = mean
         self.z_sigma = std
         eps = torch.FloatTensor(std.size()).normal_()
-        if std.data.is_cuda:
-            eps.cuda()
+        #if std.data.is_cuda:
+        #    eps.cuda()
         eps = Variable(eps)
-        return eps.mul(std).add_(mean), NormalDistribution(mean, std, torch.log(std))
+        return eps.mul(std.cpu()).add_(mean.cpu()).cuda(), NormalDistribution(mean, std, torch.log(std))
 
     def forward(self, x, action, x_next):
         mean, logvar = self.encode(x)
@@ -301,10 +301,8 @@ parser.add_argument('--folder-name', default='test_E2C',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=2, metavar='N',
+parser.add_argument('--epochs', type=int, default=1, metavar='N',
                     help='number of epochs to train (default: 500)')   
-parser.add_argument('--gamma-bound', type=int, default=10000, metavar='N',
-                    help='scale coefficient for loss of kl divergence for z (default: 10)')                      
 parser.add_argument('--gamma-kl', type=int, default=1, metavar='N',
                     help='scale coefficient for loss of kl divergence for z (default: 10)')   
 parser.add_argument('--gamma-pred', type=int, default=1, metavar='N',
@@ -348,7 +346,6 @@ print('***** Finish Preparing Data *****')
 
 
 # train var
-GAMMA_bound = args.gamma_bound
 GAMMA_kl = args.gamma_kl
 GAMMA_pred = args.gamma_pred
 
@@ -411,7 +408,6 @@ for epoch in range(init_epoch, epochs+1):
                     }, 
                     PATH)
 
-
 save_e2c_data(folder_name, epochs, train_loss_all, train_bound_loss_all, train_kl_loss_all, train_pred_loss_all, \
               test_loss_all, test_bound_loss_all, test_kl_loss_all, test_pred_loss_all)  
 
@@ -424,7 +420,6 @@ plot_test_loss('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), 
 plot_test_bound_loss('./result/{}/test_bound_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
 plot_test_kl_loss('./result/{}/test_kl_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
 plot_test_pred_loss('./result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-
 
 # save checkpoint
 PATH = './result/{}/checkpoint'.format(folder_name)

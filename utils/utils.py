@@ -457,7 +457,45 @@ def plot_test_kld_loss(file_name, folder_name):
     plt.close()
 # def plot_separate_loss(file_names, folder_name):
 #     for file_name in file_names:
+def plot_train_bound_loss(file_name, folder_name):
+    bound_loss = np.load(file_name)
+    plt.figure()
+    plt.plot(bound_loss)
+    plt.title('Train Bound Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/train_bound_loss.png'.format(folder_name))
+    plt.close()
 
+def plot_test_bound_loss(file_name, folder_name):
+    bound_loss = np.load(file_name)
+    plt.figure()
+    plt.plot(bound_loss)
+    plt.title('Test Bound Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/test_bound_loss.png'.format(folder_name))
+    plt.close()
+
+def plot_train_kl_loss(file_name, folder_name):
+    kl_loss = np.load(file_name)
+    plt.figure()
+    plt.plot(kl_loss)
+    plt.title('Train KL Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/train_kl_loss.png'.format(folder_name))
+    plt.close()
+
+def plot_test_kl_loss(file_name, folder_name):
+    kl_loss = np.load(file_name)
+    plt.figure()
+    plt.plot(kl_loss)
+    plt.title('Test KL Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.savefig('./result/{}/plot/test_kl_loss.png'.format(folder_name))
+    plt.close()
 
 def plot_all_train_loss_with_noise(train, test, img, act, latent, pred, kld, folder_name):
     train_loss = np.load(train)#[10:]
@@ -566,9 +604,16 @@ def save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act
     if L is not None:
         np.save('./result/{}/control_matrix.npy'.format(folder_name), L)                   
 
-def save_e2c_data(folder_name, epochs, train_loss_all, test_loss_all):
+def save_e2c_data(folder_name, epochs, train_loss_all, train_bound_loss_all, train_kl_loss_all, train_pred_loss_all, \
+              test_loss_all, test_bound_loss_all, test_kl_loss_all, test_pred_loss_all):
     np.save('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), train_loss_all)
+    np.save('./result/{}/train_bound_loss_epoch{}.npy'.format(folder_name, epochs), train_bound_loss_all)
+    np.save('./result/{}/train_kl_loss_epoch{}.npy'.format(folder_name, epochs), train_kl_loss_all)
+    np.save('./result/{}/train_pred_loss_epoch{}.npy'.format(folder_name, epochs), train_pred_loss_all)
     np.save('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), test_loss_all)
+    np.save('./result/{}/test_bound_loss_epoch{}.npy'.format(folder_name, epochs), test_bound_loss_all)
+    np.save('./result/{}/test_kl_loss_epoch{}.npy'.format(folder_name, epochs), test_kl_loss_all)
+    np.save('./result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs), test_pred_loss_all)
 
 # epochs = 800
 # folder_name = 'test_freeze_Kp_Lpa'

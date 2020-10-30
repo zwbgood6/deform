@@ -12,8 +12,8 @@ from torch.utils.data import Dataset, DataLoader
 from deform.model.create_dataset import *
 from deform.model.hidden_dynamics import *
 import matplotlib.pyplot as plt
-from deform.utils.utils import plot_train_loss, plot_train_bound_loss, plot_train_kl_loss, plot_train_pred_loss, \
-                               plot_test_loss, plot_test_bound_loss, plot_test_kl_loss, plot_test_pred_loss, \
+from deform.utils.utils import plot_train_loss, plot_train_latent_loss, plot_train_img_loss, plot_train_act_loss, plot_train_pred_loss, \
+                               plot_test_loss, plot_test_latent_loss, plot_test_img_loss, plot_test_act_loss, plot_test_pred_loss, \
                                plot_sample, rect, save_data, save_e2c_data, create_loss_list, create_folder, plot_grad_flow
 from deform.model.configs import load_config
 import os
@@ -206,7 +206,6 @@ def train(e2c_model):
     bound_loss = 0
     kl_loss = 0
     train_loss = 0
-    pred_loss = 0
     for batch_idx, batch_data in enumerate(trainloader):
         # current image before action
         x = batch_data['image_bi_cur']
@@ -221,17 +220,13 @@ def train(e2c_model):
         e2c_optimizer.zero_grad() 
         # model
         x_dec, x_next_pred_dec, Qz, Qz_next, Qz_next_pred = e2c_model(x, action, x_next)
-        # prediction
-        x_next_pred = e2c_model.predict(x, action)
         # loss
-        loss_pred = F.binary_cross_entropy(x_next_pred.view(-1, 2500), x_next.view(-1, 2500), reduction='sum')            
         loss_bound, loss_kl = compute_loss(x_dec, x_next_pred_dec, x, x_next, Qz, Qz_next_pred, Qz_next)
-        loss = GAMMA_bound * loss_bound + GAMMA_kl * loss_kl + GAMMA_pred * loss_pred        
+        loss = loss_bound + GAMMA_kl * loss_kl
         loss.backward()
         train_loss += loss.item()
-        bound_loss += GAMMA_bound * loss_bound.item()
-        kl_loss += GAMMA_kl * loss_kl.item()
-        pred_loss += GAMMA_pred * loss_pred.item()
+        bound_loss += loss_bound.item()
+        kl_loss += loss_kl.item()
         e2c_optimizer.step()
         if batch_idx % 5 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -253,7 +248,7 @@ def train(e2c_model):
     print('====> Epoch: {} Average loss: {:.4f}'.format(
         epoch, train_loss / len(trainloader.dataset)))
     n = len(trainloader.dataset)      
-    return train_loss/n, bound_loss/n, kl_loss/n, pred_loss/n
+    return train_loss/n, bound_loss/n, kl_loss/n
 
 def test(e2c_model):
     e2c_model.eval()
@@ -278,12 +273,12 @@ def test(e2c_model):
             x_next_pred = e2c_model.predict(x, action)
             # loss
             loss_bound, loss_kl = compute_loss(x_dec, x_next_pred_dec, x, x_next, Qz, Qz_next_pred, Qz_next)
-            loss_pred = F.binary_cross_entropy(x_next_pred.view(-1, 2500), x_next.view(-1, 2500), reduction='sum')
-            loss = GAMMA_bound * loss_bound + GAMMA_kl * loss_kl + GAMMA_pred * loss_pred
+            loss_pred = F.binary_cross_entropy(x_next.view(-1, 2500), x_next_pred.view(-1, 2500), reduction='sum')
+            loss = loss_bound + GAMMA_kl * loss_kl + GAMMA_pred * loss_pred
             test_loss += loss.item()
-            bound_loss += GAMMA_bound * loss_bound.item()
-            kl_loss += GAMMA_kl * loss_kl.item()
-            pred_loss += GAMMA_pred * loss_pred.item()
+            bound_loss += loss_bound.item()
+            kl_loss += loss_kl.item()
+            pred_loss += loss_pred.item()
             if batch_idx == 0:
                 n = min(batch_data['image_bi_cur'].size(0), 8)
                 comparison = torch.cat([batch_data['image_bi_cur'][:n],                 # current image
@@ -301,10 +296,8 @@ parser.add_argument('--folder-name', default='test_E2C',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=2, metavar='N',
+parser.add_argument('--epochs', type=int, default=1, metavar='N',
                     help='number of epochs to train (default: 500)')   
-parser.add_argument('--gamma-bound', type=int, default=10000, metavar='N',
-                    help='scale coefficient for loss of kl divergence for z (default: 10)')                      
 parser.add_argument('--gamma-kl', type=int, default=1, metavar='N',
                     help='scale coefficient for loss of kl divergence for z (default: 10)')   
 parser.add_argument('--gamma-pred', type=int, default=1, metavar='N',
@@ -348,7 +341,6 @@ print('***** Finish Preparing Data *****')
 
 
 # train var
-GAMMA_bound = args.gamma_bound
 GAMMA_kl = args.gamma_kl
 GAMMA_pred = args.gamma_pred
 
@@ -382,10 +374,9 @@ train_bound_loss_all = []
 test_bound_loss_all = []
 train_kl_loss_all = []
 test_kl_loss_all = []
-train_pred_loss_all = []
 test_pred_loss_all = []
 for epoch in range(init_epoch, epochs+1):
-    train_loss, train_bound_loss, train_kl_loss, train_pred_loss = train(e2c_model)
+    train_loss, train_bound_loss, train_kl_loss = train(e2c_model)
     test_loss, test_bound_loss, test_kl_loss, test_pred_loss = test(e2c_model)
     train_loss_all.append(train_loss)
     test_loss_all.append(test_loss)
@@ -393,16 +384,15 @@ for epoch in range(init_epoch, epochs+1):
     test_bound_loss_all.append(test_bound_loss)
     train_kl_loss_all.append(train_kl_loss)
     test_kl_loss_all.append(test_kl_loss)
-    train_pred_loss_all.append(train_pred_loss)
     test_pred_loss_all.append(test_pred_loss)
     if epoch % args.log_interval == 0:
         save_e2c_data(folder_name, epochs, train_loss_all, test_loss_all)        
         # save checkpoint
         PATH = './result/{}/checkpoint'.format(folder_name)
         loss_logger = {'train_loss_all': train_loss_all, 'train_bound_loss_all': train_bound_loss_all,
-                       'train_kl_loss_all': train_kl_loss_all, 'train_pred_loss_all': train_pred_loss_all, 
-                       'test_loss_all': test_loss_all, 'test_bound_loss_all': test_bound_loss_all, 
-                       'test_kl_loss_all': test_kl_loss_all, 'test_pred_loss_all': test_pred_loss_all}
+                       'train_kl_loss_all': train_kl_loss_all, 'test_loss_all': test_loss_all,
+                       'test_bound_loss_all': test_bound_loss_all, 'test_kl_loss_all': test_kl_loss_all,
+                       'test_pred_loss_all': test_pred_loss_all}
         torch.save({
                     'epoch': epoch,
                     'e2c_model_state_dict': e2c_model.state_dict(),
@@ -411,20 +401,11 @@ for epoch in range(init_epoch, epochs+1):
                     }, 
                     PATH)
 
-
-save_e2c_data(folder_name, epochs, train_loss_all, train_bound_loss_all, train_kl_loss_all, train_pred_loss_all, \
-              test_loss_all, test_bound_loss_all, test_kl_loss_all, test_pred_loss_all)  
+save_e2c_data(folder_name, epochs, train_loss_all, test_loss_all)  
 
 # plot
 plot_train_loss('./result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-plot_train_bound_loss('./result/{}/train_bound_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-plot_train_kl_loss('./result/{}/train_kl_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-plot_train_pred_loss('./result/{}/train_pred_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
 plot_test_loss('./result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-plot_test_bound_loss('./result/{}/test_bound_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-plot_test_kl_loss('./result/{}/test_kl_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-plot_test_pred_loss('./result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
-
 
 # save checkpoint
 PATH = './result/{}/checkpoint'.format(folder_name)
