@@ -396,7 +396,8 @@ for epoch in range(init_epoch, epochs+1):
     train_pred_loss_all.append(train_pred_loss)
     test_pred_loss_all.append(test_pred_loss)
     if epoch % args.log_interval == 0:
-        save_e2c_data(folder_name, epochs, train_loss_all, test_loss_all)        
+        save_e2c_data(folder_name, epochs, train_loss_all, train_bound_loss_all, train_kl_loss_all, train_pred_loss_all, \
+              test_loss_all, test_bound_loss_all, test_kl_loss_all, test_pred_loss_all)         
         # save checkpoint
         PATH = './result/{}/checkpoint'.format(folder_name)
         loss_logger = {'train_loss_all': train_loss_all, 'train_bound_loss_all': train_bound_loss_all,
@@ -411,6 +412,7 @@ for epoch in range(init_epoch, epochs+1):
                     }, 
                     PATH)
 
+
 save_e2c_data(folder_name, epochs, train_loss_all, train_bound_loss_all, train_kl_loss_all, train_pred_loss_all, \
               test_loss_all, test_bound_loss_all, test_kl_loss_all, test_pred_loss_all)  
 
@@ -424,9 +426,13 @@ plot_test_bound_loss('./result/{}/test_bound_loss_epoch{}.npy'.format(folder_nam
 plot_test_kl_loss('./result/{}/test_kl_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
 plot_test_pred_loss('./result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs), folder_name)
 
+
 # save checkpoint
 PATH = './result/{}/checkpoint'.format(folder_name)
-loss_logger = {'train_loss_all': train_loss_all, 'test_loss_all': test_loss_all}
+loss_logger = {'train_loss_all': train_loss_all, 'train_bound_loss_all': train_bound_loss_all,
+               'train_kl_loss_all': train_kl_loss_all, 'train_pred_loss_all': train_pred_loss_all, 
+               'test_loss_all': test_loss_all, 'test_bound_loss_all': test_bound_loss_all, 
+               'test_kl_loss_all': test_kl_loss_all, 'test_pred_loss_all': test_pred_loss_all}
 torch.save({
             'epoch': epoch,
             'e2c_model_state_dict': e2c_model.state_dict(),
