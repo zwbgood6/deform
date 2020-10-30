@@ -302,7 +302,7 @@ parser.add_argument('--gamma-kl', type=int, default=1, metavar='N',
                     help='scale coefficient for loss of kl divergence for z (default: 10)')   
 parser.add_argument('--gamma-pred', type=int, default=1, metavar='N',
                     help='scale coefficient for loss of prediction (default: 100)')                                                                           
-parser.add_argument('--no-cuda', action='store_true', default=True,
+parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')                   
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
