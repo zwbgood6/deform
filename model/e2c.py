@@ -69,7 +69,7 @@ def KLDGaussian(Q, N, eps=1e-8):
     return 0.5 * (a + b - k + c)
 
 class E2C(nn.Module):
-    def __init__(self, dim_z=80, dim_u=4, config='rope'):
+    def __init__(self, dim_z=80, dim_u=4):
         super(E2C, self).__init__()
         self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
                                          nn.ReLU(),
@@ -198,6 +198,7 @@ def compute_loss(x_dec, x_next_pred_dec, x, x_next,
     # ELBO
     bound_loss = x_reconst_loss.add(x_next_reconst_loss).add(KLD.reshape(-1,1,1))
     kl = KLDGaussian(Qz_next_pred, Qz_next)
+    kl = kl[~torch.isnan(kl)]
     return bound_loss.mean(), kl.mean()
 
 def train(e2c_model):
@@ -254,6 +255,7 @@ def test(e2c_model):
     test_loss = 0
     bound_loss = 0
     kl_loss = 0
+    pred_loss = 0
     with torch.no_grad():
         for batch_idx, batch_data in enumerate(testloader):
             # current image before current action
@@ -271,7 +273,7 @@ def test(e2c_model):
             x_next_pred = e2c_model.predict(x, action)
             # loss
             loss_bound, loss_kl = compute_loss(x_dec, x_next_pred_dec, x, x_next, Qz, Qz_next_pred, Qz_next)
-            loss_pred = -binary_crossentropy(x_next, x_next_pred).sum(dim=1)
+            loss_pred = F.binary_cross_entropy(x_next.view(-1, 2500), x_next_pred.view(-1, 2500), reduction='sum')
             loss = loss_bound + GAMMA_kl * loss_kl + GAMMA_pred * loss_pred
             test_loss += loss.item()
             bound_loss += loss_bound.item()
@@ -294,11 +296,11 @@ parser.add_argument('--folder-name', default='test_E2C',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
+parser.add_argument('--epochs', type=int, default=100, metavar='N',
                     help='number of epochs to train (default: 500)')   
-parser.add_argument('--gamma-kl', type=int, default=0.5, metavar='N',
+parser.add_argument('--gamma-kl', type=int, default=1, metavar='N',
                     help='scale coefficient for loss of kl divergence for z (default: 10)')   
-parser.add_argument('--gamma-pred', type=int, default=10, metavar='N',
+parser.add_argument('--gamma-pred', type=int, default=1, metavar='N',
                     help='scale coefficient for loss of prediction (default: 100)')                                                                           
 parser.add_argument('--no-cuda', action='store_true', default=True,
                     help='enables CUDA training')                   
