@@ -297,12 +297,14 @@ def test(e2c_model):
 
 # args
 parser = argparse.ArgumentParser(description='E2C Rope Deform Example')
-parser.add_argument('--folder-name', default='test_E2C', 
+parser.add_argument('--folder-name', default='test_E2C_gpu', 
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
 parser.add_argument('--epochs', type=int, default=1, metavar='N',
-                    help='number of epochs to train (default: 500)')   
+                    help='number of epochs to train (default: 500)')  
+parser.add_argument('--gamma-bound', type=int, default=10000, metavar='N',
+                    help='scale coefficient for loss of kl divergence for z (default: 10)')                       
 parser.add_argument('--gamma-kl', type=int, default=1, metavar='N',
                     help='scale coefficient for loss of kl divergence for z (default: 10)')   
 parser.add_argument('--gamma-pred', type=int, default=1, metavar='N',
@@ -346,6 +348,7 @@ print('***** Finish Preparing Data *****')
 
 
 # train var
+GAMMA_bound = args.gamma_bound
 GAMMA_kl = args.gamma_kl
 GAMMA_pred = args.gamma_pred
 
