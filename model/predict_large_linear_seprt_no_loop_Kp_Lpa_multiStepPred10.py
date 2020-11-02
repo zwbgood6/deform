@@ -266,7 +266,7 @@ def predict():
             K_T_post8, L_T_post8 = dyn_model(recon_img_post8, act_post8)
             recon_latent_img_post9 = get_next_state_linear(recon_latent_img_post8, latent_act_post8, K_T_post8, L_T_post8)
             recon_img_post9 = recon_model.decoder(recon_latent_img_post9)                                                                                             
-            if batch_idx % 10 == 0:
+            if batch_idx % 5 == 0:
                 n = min(batch_data['image_bi_pre'].size(0), 1)
                 comparison_GT = torch.cat([batch_data['image_bi_pre'][:n],
                                         batch_data['image_bi_cur'][:n],

@@ -59,7 +59,7 @@ def sample_action(I, mean=None, cov=None):
         #action = np.multiply(action_base, mutiplier) + addition
     return action
 
-def generate_next_pred_state(recon_model, dyn_model, img_pre, act_pre):
+def generate_next_pred_state(e2c_model, img_pre, act_pre):
     # TODO: unit test
     '''generate next predicted state
     reconstruction model: recon_model
@@ -68,12 +68,14 @@ def generate_next_pred_state(recon_model, dyn_model, img_pre, act_pre):
     each action sequence length: H
     number of action sequences: N
     '''
-    latent_img_pre, latent_act_pre, _, _, _ = recon_model(img_pre.reshape((-1, 1, 50, 50)), act_pre.reshape((-1, 4)).type(torch.float), None)
-    K_T_pre, L_T_pre = dyn_model(img_pre.reshape((-1, 1, 50, 50)), act_pre.reshape((-1, 4)).type(torch.float))
-    recon_latent_img_cur = get_next_state_linear(latent_img_pre, latent_act_pre, K_T_pre, L_T_pre)
-    return recon_model.decoder(recon_latent_img_cur)
+    recon_img_cur = e2c_model.predict(img_pre, act_pre)
+    return recon_img_cur
+    # latent_img_pre, latent_act_pre, _, _, _ = recon_model(img_pre.reshape((-1, 1, 50, 50)), act_pre.reshape((-1, 4)).type(torch.float), None)
+    # K_T_pre, L_T_pre = dyn_model(img_pre.reshape((-1, 1, 50, 50)), act_pre.reshape((-1, 4)).type(torch.float))
+    # recon_latent_img_cur = get_next_state_linear(latent_img_pre, latent_act_pre, K_T_pre, L_T_pre)
+    # return recon_model.decoder(recon_latent_img_cur)
 
-def generate_next_pred_state_in_n_step(recon_model, dyn_model, img_initial, N, H, mean=None, cov=None):
+def generate_next_pred_state_in_n_step(e2c_model, img_initial, N, H, mean=None, cov=None):
     # TODO: unit test
     imgs = [None]*N
     actions = torch.tensor([[0.]*4]*N) #torch.tensor(np.nan_to_num(np.array([None]*N)))
@@ -84,7 +86,7 @@ def generate_next_pred_state_in_n_step(recon_model, dyn_model, img_initial, N, H
             action = sample_action(img_tmp, mean, cov)
             if h==0:
                 actions[n] = action # only get the first action in each sequence
-            img_tmp = generate_next_pred_state(recon_model, dyn_model, img_tmp, action)
+            img_tmp = generate_next_pred_state(e2c_model, img_tmp, action)
         imgs[n] = img_tmp
     return imgs, actions
 
@@ -120,7 +122,7 @@ def bhattacharyya(dist, cov1, cov2):
     d2 = np.log(det(cov) / sqrt(det(cov1) * det(cov2))) / 2
     return d1 + d2
 
-def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, step_i, KL):
+def main(e2c_model, T, K, N, H, img_initial, img_goal, resz_act, step_i, KL):
     # TODO: unit test
     for t in range(T):
         print("***** Start Step {}".format(t))
@@ -138,7 +140,7 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, st
             #Sample N action sequences a{t:t+H-1} with length H from Q 
             #action_base = np.random.uniform(low=0.0, high=1.0, size=4)
             #Use model M to predict the next state using M action sequences 
-            imgs_recon, sample_actions = generate_next_pred_state_in_n_step(recon_model, dyn_model, img_cur, N, H, mean, cov)
+            imgs_recon, sample_actions = generate_next_pred_state_in_n_step(e2c_model, img_cur, N, H, mean, cov)
             #Calculate binary cross entropy loss for predicted image and goal image 
             loss = loss_function_img(imgs_recon, img_goal, N)
             #Select K action sequences with lowest loss 
@@ -176,14 +178,13 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, st
     #end for
 
         #Execute action a{t}* with lowest loss 
-        action_best = sorted_sample_actions[0] 
+        action_best = sorted_sample_actions[0]
         action_loss = ((action_best.detach().cpu().numpy()-resz_act[:4])**2).mean(axis=None)
-        #torch.save(action_best, "./plan_result/{}/action_best_step{}_N{}_K{}.pt".format(plan_folder_name, step_i, N, K))
         #Observe new image I{t+1} 
-        img_cur = generate_next_pred_state(recon_model, dyn_model, img_cur, action_best)
+        img_cur = generate_next_pred_state(e2c_model, img_cur, action_best)
         img_loss = F.binary_cross_entropy(img_cur.view(-1, 2500), img_goal.view(-1, 2500), reduction='mean')
-        # comparison = torch.cat([img_initial, img_goal, img_cur])
-        # save_image(comparison, "./plan_result/{}/image_best_step{}_N{}_K{}.png".format(plan_folder_name, step_i, N, K))
+        #comparison = torch.cat([img_initial, img_goal, img_cur])
+        #save_image(comparison, "./plan_result/{}/image_best_step{}_N{}_K{}.png".format(plan_folder_name, step_i, N, K))
         # plot_cem_sample(img_initial.detach().reshape((50,50)).cpu().numpy(), 
         #                 img_goal.detach().reshape((50,50)).cpu().numpy(), 
         #                 img_cur.detach().reshape((50,50)).cpu().numpy(), 
@@ -197,7 +198,7 @@ def main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act, st
     return action_loss, img_loss.detach().cpu().numpy()
 
 # plan result folder name
-plan_folder_name = 'curve_KL'
+plan_folder_name = 'test_e2c'
 if not os.path.exists('./plan_result/{}'.format(plan_folder_name)):
     os.makedirs('./plan_result/{}'.format(plan_folder_name))
 # time step to execute the action
@@ -214,8 +215,7 @@ H = 1 # 10-50
 torch.manual_seed(1)
 device = torch.device("cpu")
 print("Device is:", device)
-recon_model = CAE().to(device)
-dyn_model = SysDynamics().to(device)
+e2c_model = E2C().to(device)
 
 # action
 # load GT action
@@ -224,21 +224,24 @@ resz_act = np.load(resz_act_path)
 
 # checkpoint
 print('***** Load Checkpoint *****')
-folder_name = "test_act80_pred30"
+folder_name = "test_E2C_gpu_update_loss"
 PATH = './result/{}/checkpoint'.format(folder_name)
-checkpoint = torch.load(PATH, map_location=device)
-recon_model.load_state_dict(checkpoint['recon_model_state_dict'])  
-dyn_model.load_state_dict(checkpoint['dyn_model_state_dict'])  
+checkpoint_e2c = torch.load(PATH, map_location=device)
+e2c_model.load_state_dict(checkpoint_e2c['e2c_model_state_dict'])  
 
 total_img_num = 22515
 #train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
 
 
+#resz_act_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
+#resz_act = np.load(resz_act_path)
+
+#dataset = MyDataset(image_paths_bi, resz_act, transform=ToTensor())
+
 def get_image(i):
     img = TF.to_tensor(Image.open(image_paths_bi[i])) > 0.3
     return img.reshape((-1, 1, 50, 50)).type(torch.float)
-
 
 for KL in [1000]:
     action_loss_all = []
@@ -246,7 +249,7 @@ for KL in [1000]:
     for i in range(20000, 20010):
         img_initial = get_image(i)
         img_goal = get_image(i+1)
-        action_loss, img_loss = main(recon_model, dyn_model, T, K, N, H, img_initial, img_goal, resz_act[i], i, KL)
+        action_loss, img_loss = main(e2c_model, T, K, N, H, img_initial, img_goal, resz_act[i], i, KL)
         action_loss_all.append(action_loss)
         img_loss_all.append(img_loss)
     np.save('./plan_result/{}/KL_action_{}.npy'.format(plan_folder_name, KL), action_loss_all)

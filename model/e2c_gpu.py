@@ -69,7 +69,7 @@ def KLDGaussian(Q, N, eps=1e-8):
     return 0.5 * (a + b - k + c)
 
 class E2C(nn.Module):
-    def __init__(self, dim_z=80, dim_u=4):
+    def __init__(self, dim_z=80, dim_u=80):
         super(E2C, self).__init__()
         self.conv_layers = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1),  
                                          nn.ReLU(),
@@ -110,7 +110,13 @@ class E2C(nn.Module):
         self.fc_o = nn.Linear(dim_z, dim_z)   
         self.dim_z = dim_z
         self.dim_u = dim_u                                   
-
+        # action
+        self.fc5 = nn.Linear(4, dim_u*20)
+        self.fc6 = nn.Linear(dim_u*20, dim_u) 
+        self.fc7 = nn.Linear(dim_u, dim_u*20) # 10-100
+        self.fc8 = nn.Linear(dim_u*20, 4) 
+        self.mul_tensor = torch.tensor([50, 50, 2*math.pi, 0.14]) 
+        self.add_tensor = torch.tensor([0, 0, 0, 0.01]) 
 
     def encode(self, x):
         x = self.conv_layers(x)
@@ -121,6 +127,14 @@ class E2C(nn.Module):
         x = relu(self.fc2(x))
         x = x.view(-1, 128, 3, 3)
         return self.dconv_layers(x)
+
+    def encode_act(self, u):
+        h1 = relu(self.fc5(u))
+        return relu(self.fc6(h1))
+
+    def decode_act(self, u):
+        h2 = relu(self.fc7(u))
+        return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
 
     def transition(self, h, Q, u):
         batch_size = h.size()[0]
@@ -163,10 +177,14 @@ class E2C(nn.Module):
         self.x_dec = self.decode(z)
         self.x_next_dec = self.decode(z_next)
 
-        self.z_next_pred, self.Qz_next_pred = self.transition(z, self.Qz, action)
+        latent_a = self.encode_act(action)
+        action_dec = self.decode_act(latent_a)
+
+        self.z_next_pred, self.Qz_next_pred = self.transition(z, self.Qz, latent_a)
         self.x_next_pred_dec = self.decode(self.z_next_pred)
 
-        return self.x_dec, self.x_next_pred_dec, self.Qz, self.Qz_next, self.Qz_next_pred
+        
+        return self.x_dec, self.x_next_dec, self.x_next_pred_dec, self.Qz, self.Qz_next, self.Qz_next_pred, action_dec
 
     def latent_embeddings(self, x):
         return self.encode(x)[0]
@@ -220,13 +238,16 @@ def train(e2c_model):
         # optimization
         e2c_optimizer.zero_grad() 
         # model
-        x_dec, x_next_pred_dec, Qz, Qz_next, Qz_next_pred = e2c_model(x, action, x_next)
+        x_dec, x_next_dec, x_next_pred_dec, Qz, Qz_next, Qz_next_pred, action_dec = e2c_model(x, action, x_next)
         # prediction
         x_next_pred = e2c_model.predict(x, action)
         # loss
+        loss_act = F.mse_loss(action_dec.view(-1, 4), action.view(-1, 4), reduction='sum')
         loss_pred = F.binary_cross_entropy(x_next_pred.view(-1, 2500), x_next.view(-1, 2500), reduction='sum')            
         loss_bound, loss_kl = compute_loss(x_dec, x_next_pred_dec, x, x_next, Qz, Qz_next_pred, Qz_next)
-        loss = GAMMA_bound * loss_bound + GAMMA_kl * loss_kl + GAMMA_pred * loss_pred        
+        loss_x_recon = F.binary_cross_entropy(x_dec.view(-1, 2500), x.view(-1, 2500), reduction='sum')
+        loss_x_next_recon = F.binary_cross_entropy(x_next_dec.view(-1, 2500), x_next.view(-1, 2500), reduction='sum')
+        loss = GAMMA_bound * loss_bound + GAMMA_kl * loss_kl + GAMMA_pred * loss_pred + loss_x_recon + loss_x_next_recon + GAMMA_act * loss_act     
         loss.backward()
         train_loss += loss.item()
         bound_loss += GAMMA_bound * loss_bound.item()
@@ -273,13 +294,16 @@ def test(e2c_model):
             x_next = batch_data['image_bi_post']
             x_next = x_next.float().to(device).view(-1, 1, 50, 50) 
             # model
-            x_dec, x_next_pred_dec, Qz, Qz_next, Qz_next_pred = e2c_model(x, action, x_next)
+            x_dec, x_next_dec, x_next_pred_dec, Qz, Qz_next, Qz_next_pred,action_dec = e2c_model(x, action, x_next)
             # prediction
             x_next_pred = e2c_model.predict(x, action)
             # loss
+            loss_act = F.mse_loss(action_dec.view(-1, 4), action.view(-1, 4), reduction='sum')
+            loss_pred = F.binary_cross_entropy(x_next_pred.view(-1, 2500), x_next.view(-1, 2500), reduction='sum')            
             loss_bound, loss_kl = compute_loss(x_dec, x_next_pred_dec, x, x_next, Qz, Qz_next_pred, Qz_next)
-            loss_pred = F.binary_cross_entropy(x_next_pred.view(-1, 2500), x_next.view(-1, 2500), reduction='sum')
-            loss = GAMMA_bound * loss_bound + GAMMA_kl * loss_kl + GAMMA_pred * loss_pred
+            loss_x_recon = F.binary_cross_entropy(x_dec.view(-1, 2500), x.view(-1, 2500), reduction='sum')
+            loss_x_next_recon = F.binary_cross_entropy(x_next_dec.view(-1, 2500), x_next.view(-1, 2500), reduction='sum')
+            loss = GAMMA_bound * loss_bound + GAMMA_kl * loss_kl + GAMMA_pred * loss_pred + loss_x_recon + loss_x_next_recon + GAMMA_act * loss_act 
             test_loss += loss.item()
             bound_loss += GAMMA_bound * loss_bound.item()
             kl_loss += GAMMA_kl * loss_kl.item()
@@ -297,18 +321,20 @@ def test(e2c_model):
 
 # args
 parser = argparse.ArgumentParser(description='E2C Rope Deform Example')
-parser.add_argument('--folder-name', default='test_E2C_gpu', 
+parser.add_argument('--folder-name', default='test_E2C_gpu_update_loss', 
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=1, metavar='N',
+parser.add_argument('--epochs', type=int, default=1000, metavar='N',
                     help='number of epochs to train (default: 500)')  
-parser.add_argument('--gamma-bound', type=int, default=10000, metavar='N',
+parser.add_argument('--gamma-bound', type=int, default=1000, metavar='N',
                     help='scale coefficient for loss of kl divergence for z (default: 10)')                       
 parser.add_argument('--gamma-kl', type=int, default=1, metavar='N',
                     help='scale coefficient for loss of kl divergence for z (default: 10)')   
-parser.add_argument('--gamma-pred', type=int, default=1, metavar='N',
-                    help='scale coefficient for loss of prediction (default: 100)')                                                                           
+parser.add_argument('--gamma-pred', type=int, default=100, metavar='N',
+                    help='scale coefficient for loss of prediction (default: 100)') 
+parser.add_argument('--gamma-act', type=int, default=100, metavar='N',
+                    help='scale coefficient for loss of prediction (default: 100)')                                                                                              
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')                   
 parser.add_argument('--seed', type=int, default=1, metavar='S',
@@ -323,7 +349,7 @@ torch.manual_seed(args.seed)
           
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 100#22515
+total_img_num = 22515
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
@@ -351,7 +377,7 @@ print('***** Finish Preparing Data *****')
 GAMMA_bound = args.gamma_bound
 GAMMA_kl = args.gamma_kl
 GAMMA_pred = args.gamma_pred
-
+GAMMA_act = args.gamma_act
 # create folders
 folder_name = args.folder_name
 create_folder(folder_name)
