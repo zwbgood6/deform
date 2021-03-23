@@ -29,9 +29,15 @@ class MyDataset(Dataset):
         none_sample = {'image_bi_pre': None, 'image_bi_cur': None, 'image_bi_post': None, 'resz_action_pre': None, 'resz_action_cur': None}
         # edge cases, use index in [1,n-1) 
         if index == 0:
-            index = np.random.randint(1, n-1)
+            if n == 2:
+                index = 1
+            else:    
+                index = np.random.randint(1, n-1)
         if index == n-1:
-            index = np.random.randint(1, n-1)
+            if n == 2:
+                index = 1
+            else:    
+                index = np.random.randint(1, n-1)
 
         # load action 
         resz_action_pre = self.resz_actions[index-1]
@@ -44,6 +50,7 @@ class MyDataset(Dataset):
         image_bi_pre = Image.open(self.image_paths_bi[index-1])
         image_bi_cur = Image.open(self.image_paths_bi[index])        
         image_bi_post = Image.open(self.image_paths_bi[index+1])
+        
         #image_bi_pre = self.transform_img(image_bi_pre, trans)
         #image_bi_post = self.transform_img(image_bi_post, trans)
         #image_ori_pre = plt.imread(self.image_paths_ori[index])
@@ -67,6 +74,11 @@ class MyDataset(Dataset):
         #trans = None  
         if self.transform:
             sample = self.transform(sample)
+        # *** test ***
+        # plt.figure()
+        # plt.imshow(sample['image_bi_pre'].cpu()) 
+        # plt.show()  
+        # *** end test ***
 
         return sample
 
@@ -339,8 +351,20 @@ class ToTensor(object):
         # to tensor and binarize image
         image_bi_pre = TF.to_tensor(image_bi_pre) > 0.3
         image_bi_cur = TF.to_tensor(image_bi_cur) > 0.3
-        image_bi_post = TF.to_tensor(image_bi_post) > 0.3
+        image_bi_post = TF.to_tensor(image_bi_post) > 0.3              
         return {'image_bi_pre': image_bi_pre.float(), 'image_bi_cur': image_bi_cur.float(), 'image_bi_post': image_bi_post.float(), 'resz_action_pre': torch.tensor(resz_action_pre), 'resz_action_cur': torch.tensor(resz_action_cur)}
+
+class ToTensorRGB(object):
+    '''convert ndarrays in sample to tensors
+    '''
+    def __call__(self, sample):
+        image_bi_pre, image_bi_cur, image_bi_post, resz_action_pre, resz_action_cur = sample['image_bi_pre'], sample['image_bi_cur'], sample['image_bi_post'], sample['resz_action_pre'], sample['resz_action_cur']
+        image_bi_pre = TF.to_tensor(image_bi_pre) 
+        image_bi_cur = TF.to_tensor(image_bi_cur) 
+        image_bi_post = TF.to_tensor(image_bi_post)               
+        return {'image_bi_pre': image_bi_pre.float(), 'image_bi_cur': image_bi_cur.float(), 'image_bi_post': image_bi_post.float(), 'resz_action_pre': torch.tensor(resz_action_pre), 'resz_action_cur': torch.tensor(resz_action_cur)}
+
+
 
 class ToTensorMultiPred4(object):
     '''convert ndarrays in sample to tensors

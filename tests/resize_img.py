@@ -2,8 +2,8 @@ from PIL import Image
 import cv2
 import numpy as np
 
-for i in range(77944):
-    add1 = '/home/zwenbo/Documents/research/deform/rope_dataset/rope_all'
+for i in range(21521):
+    add1 = '/home/zwenbo/Documents/research/deform/rope_dataset/rope_clean_all'
     if len(str(i)) == 1:
         add3 = '/img_0000{}.jpg'.format(i)
     elif len(str(i)) == 2:
@@ -20,7 +20,7 @@ for i in range(77944):
     # resize the image
     img = cv2.resize(img, (50,50), interpolation = cv2.INTER_AREA)
     # image to grayscale
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
-    add2 = '/home/zwenbo/Documents/research/deform/rope_dataset/rope_all_resize_gray'
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
+    add2 = '/home/zwenbo/Documents/research/deform/rope_dataset/rope_clean_all_resize50'
     cv2.imwrite(add2 + add3, img)
 

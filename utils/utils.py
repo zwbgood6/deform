@@ -100,6 +100,13 @@ def plot_action(resz_action, recon_action, directory):
     plt.savefig(directory) 
     plt.close()
 
+def change_img_dim(img):
+    img_tmp = np.ones((img.shape[1], img.shape[2], img.shape[0]))
+    img_tmp[:,:,0] = img[0]
+    img_tmp[:,:,1] = img[1]
+    img_tmp[:,:,2] = img[2]
+    return img_tmp
+
 def plot_sample(img_before, img_after, resz_action, recon_action, directory):
     # from rope.ipynb in Berkeley's rope dataset file
     plt.figure()
@@ -108,16 +115,19 @@ def plot_sample(img_before, img_after, resz_action, recon_action, directory):
         # upper row original
         plt.subplot(3, N, i+1)
         rect(resz_action[i], "blue")
-        plt.imshow(img_before[i].reshape((50,50)))
+        plt.imshow(change_img_dim(img_before[i]))
+        #plt.imshow(img_before[i].reshape((50,50,-1)))
         plt.axis('off') 
         # middle row reconstruction
         plt.subplot(3, N, i+1+N)
         rect(recon_action[i], "red")
-        plt.imshow(img_before[i].reshape((50,50)))
+        plt.imshow(change_img_dim(img_before[i]))
+        #plt.imshow(img_before[i].reshape((50,50,-1)))
         plt.axis('off')
         # lower row: next image after action
         plt.subplot(3, N, i+1+2*N)
-        plt.imshow(img_after[i].reshape((50,50)))
+        plt.imshow(change_img_dim(img_after[i]))
+        #plt.imshow(img_after[i].reshape((50,50,-1)))
         plt.axis('off')
     plt.savefig(directory) 
     plt.close()
@@ -129,20 +139,20 @@ def plot_cem_sample(img_before, img_after, img_after_pred, resz_action, recon_ac
     # upper row original
     plt.subplot(2, 2, 1)
     rect(resz_action, "blue", "Ground Truth Action")
-    plt.imshow(img_before.reshape((50,50)), cmap='gray')
+    plt.imshow(img_before.reshape((50,50,-1)), cmap='gray')
     plt.axis('off') 
     # middle row reconstruction
     plt.subplot(2, 2, 2)
-    plt.imshow(img_after.reshape((50,50)), cmap='gray')
+    plt.imshow(img_after.reshape((50,50,-1)), cmap='gray')
     plt.axis('off')
     # lower row: next image after action
     plt.subplot(2, 2, 3)
     rect(recon_action, "red", "Sampled Action")    
-    plt.imshow(img_before.reshape((50,50)), cmap='gray')
+    plt.imshow(img_before.reshape((50,50,-1)), cmap='gray')
     plt.axis('off')
     # lower row: next image after action
     plt.subplot(2, 2, 4)
-    plt.imshow(img_after_pred.reshape((50,50)), cmap='gray')
+    plt.imshow(img_after_pred.reshape((50,50,-1)), cmap='gray')
     plt.axis('off')    
     plt.savefig(directory) 
     plt.close()
@@ -157,56 +167,56 @@ def plot_sample_multi_step(img1, img2, img3, img4, img5, img6, img7, img8, img9,
         # img1, act1
         plt.subplot(11, N, i+1)
         rect(act1[i], "red")
-        plt.imshow(img1[i].reshape((50,50)), cmap='binary')
+        plt.imshow(img1[i].reshape((50,50,-1)), cmap='binary')
         plt.axis('off') 
         # img2, act2
         plt.subplot(11, N, i+1+N)
         rect(act2[i], "red")
-        plt.imshow(img2[i].reshape((50,50)), cmap='binary')
+        plt.imshow(img2[i].reshape((50,50,-1)), cmap='binary')
         plt.axis('off')
         # img3, act3
         plt.subplot(11, N, i+1+2*N)
         rect(act3[i], "red")
-        plt.imshow(img3[i].reshape((50,50)), cmap='binary')
+        plt.imshow(img3[i].reshape((50,50,-1)), cmap='binary')
         plt.axis('off')
         # img4, act4
         plt.subplot(11, N, i+1+3*N)
         rect(act4[i], "red")
-        plt.imshow(img4[i].reshape((50,50)), cmap='binary')
+        plt.imshow(img4[i].reshape((50,50,-1)), cmap='binary')
         plt.axis('off')
         # img5, act5
         plt.subplot(11, N, i+1+4*N)
         rect(act5[i], "red")
-        plt.imshow(img5[i].reshape((50,50)), cmap='binary')
+        plt.imshow(img5[i].reshape((50,50,-1)), cmap='binary')
         plt.axis('off')
         # img6, act6
         plt.subplot(11, N, i+1+5*N)
         rect(act6[i], "red")
-        plt.imshow(img6[i].reshape((50,50)), cmap='binary')
+        plt.imshow(img6[i].reshape((50,50,-1)), cmap='binary')
         plt.axis('off')
         # img7, act7
         plt.subplot(11, N, i+1+6*N)
         rect(act7[i], "red")
-        plt.imshow(img7[i].reshape((50,50)), cmap='binary')
+        plt.imshow(img7[i].reshape((50,50,-1)), cmap='binary')
         plt.axis('off')
         # img8, act8
         plt.subplot(11, N, i+1+7*N)
         rect(act8[i], "red")
-        plt.imshow(img8[i].reshape((50,50)), cmap='binary')
+        plt.imshow(img8[i].reshape((50,50,-1)), cmap='binary')
         plt.axis('off')
         # img9, act9
         plt.subplot(11, N, i+1+8*N)
         rect(act9[i], "red")
-        plt.imshow(img9[i].reshape((50,50)), cmap='binary')
+        plt.imshow(img9[i].reshape((50,50,-1)), cmap='binary')
         plt.axis('off')
         # img10, act10
         plt.subplot(11, N, i+1+9*N)
         rect(act10[i], "red")
-        plt.imshow(img10[i].reshape((50,50)), cmap='binary')
+        plt.imshow(img10[i].reshape((50,50,-1)), cmap='binary')
         plt.axis('off')                                
         # img11, act11
         plt.subplot(11, N, i+1+10*N)
-        plt.imshow(img11[i].reshape((50,50)), cmap='binary')
+        plt.imshow(img11[i].reshape((50,50,-1)), cmap='binary')
         plt.axis('off')    
     plt.savefig(directory) 
     plt.close()
