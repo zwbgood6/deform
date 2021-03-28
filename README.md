@@ -38,6 +38,11 @@ pip install torch torchvision
 pip install matplotlib
 ```
 
+Clone the program
+```
+git clone https://github.com/zwbgood6/deform.git
+```
+
 ### Dataset
 ```
 mkdir rope_dataset
