@@ -66,6 +66,7 @@ python -m deform.model.pred_nn_large_linear_seprt_np_loop_Kp_Lpa
 
 ## Model Architecture and Hyperparameters
 
+![Click here](./model/README.md)
 
 ## Experimental Results
 
