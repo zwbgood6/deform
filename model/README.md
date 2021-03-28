@@ -14,4 +14,4 @@
 | latent action size | 80 |
 | $\lambda_1$ (action coefficient in the loss function) | 450 |
 | $\lambda_2$ (dynamics coefficient in the loss function) | 900 |
-| $\lambda_3$ (predictio coefficient in the loss function) | 10 |
+| $$\lambda_3$$ (predictio coefficient in the loss function) | 10 |
