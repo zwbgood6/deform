@@ -75,4 +75,6 @@ python -m deform.model.pred_nn_large_linear_seprt_np_loop_Kp_Lpa
 
 ## Experimental Results
 
+<img src='./image/CEM_result.png' align="middle" width=360>
 
+<img src='./image/multi_step_pred_result.png' align="middle" width=360>
