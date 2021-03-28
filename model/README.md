@@ -1,5 +1,10 @@
 ## Model Architecture
 
+![State model]()
+
+![Action model]()
+
+![Dynamics model]()
 
 ## Hyperparameters
 
