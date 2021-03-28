@@ -13,5 +13,5 @@
 | latent state size | 80 |
 | latent action size | 80 |
 | &lambda;<sub>1</sub> (action coefficient in the loss function) | 450 |
-| $\lambda_2$ (dynamics coefficient in the loss function) | 900 |
-| $$\lambda_3$$ (predictio coefficient in the loss function) | 10 |
+| &lambda;<sub>2</sub> (dynamics coefficient in the loss function) | 900 |
+| &lambda;<sub>3</sub> (predictio coefficient in the loss function) | 10 |
