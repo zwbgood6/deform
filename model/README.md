@@ -1,12 +1,15 @@
 ## Model Architecture
 
-State Model < \br>
+State Model 
+
 <img src='./image/state_model.png' align="middle" width=360>
 
-Action Model < \br>
+Action Model 
+
 <img src='./image/action_model.png' align="middle" width=360>
 
-Dynamics model < \br>
+Dynamics model 
+
 <img src='./image/dynamics_model.png' align="middle" width=360>
 
 ## Hyperparameters
