@@ -1,6 +1,6 @@
 ## Model Architecture
 
-![State model]()
+![State model](./image/state_model.pdf)
 
 ![Action model]()
 
