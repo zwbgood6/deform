@@ -1,5 +1,6 @@
 # Deformable Linear Object Prediction Using Locally Linear Latent Dynamics
 
+## Introduction
 This repository contains the code for the paper - Deformable Linear Object Prediction Using Locally Linear Latent Dynamics.
 
 Access the [Paper]() on Arxiv <br /> 
@@ -7,37 +8,37 @@ Author: [Wenbo Zhang](), [Karl Schmeckpaper](https://sites.google.com/view/karls
 GRASP Laboratory, University of Pennsylvania <br />
 The 2021 International Conference on Robotics and Automation (ICRA 2021), Xi'an, China
 
-## Preparation
+## Citation
+If you use this code for your research, please cite our [paper]():
+```
+TBD
+```
 
-Create a folder for the repo.
-
+## Running the code
+### Preparation
+Create a folder for the repo
 ```
 mkdir deform
 cd deform
 ```
-
-Build the virtual environment.
-
+Build the virtual environment
 ```
 python3 -m pip install --user virtualenv
 python3 -m venv deform_env
 ```
 
 Activate virtual environment
-
 ```
 source deform_env/bin/activate
 ```
 
 Install libraries and dependencies
-
 ```
 pip install torch torchvision
 pip install matplotlib
 ```
 
-## Dataset
-
+### Dataset
 ```
 mkdir rope_dataset
 ```
@@ -48,19 +49,24 @@ cd rope_dataset
 unzip paper_dataset.zip
 ```
 
-## Training
-
+### Training
 Go to the main deform folder directory
 ```
 python -m deform.model.nn_large_linear_seprt_no_loop_Kp_Lpa
 ```
 
-## Prediction
-
+### Prediction
 After training, run
 ```
 python -m deform.model.pred_nn_large_linear_seprt_np_loop_Kp_Lpa
 
 ```
-## CEM
+### CEM
+
+
+## Model Architecture and Hyperparameters
+
+
+## Experimental Results
+
 
