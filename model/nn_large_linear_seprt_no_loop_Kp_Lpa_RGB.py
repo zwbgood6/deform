@@ -10,6 +10,8 @@ from torchvision.utils import save_image
 from torch.utils.data import Dataset, DataLoader
 from deform.model.create_dataset import *
 from deform.model.hidden_dynamics import *
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from deform.utils.utils import plot_train_loss, plot_train_latent_loss, plot_train_img_loss, plot_train_act_loss, plot_train_pred_loss, \
                                plot_test_loss, plot_test_latent_loss, plot_test_img_loss, plot_test_act_loss, plot_test_pred_loss, \
@@ -238,6 +240,7 @@ def train_new(epoch, recon_model, dyn_model, epoch_thres=500):
         pred_loss = 0
         for batch_idx, batch_data in enumerate(trainloader):
             # current image before action
+            #print("The batch data is {}".format(batch_data))
             img_cur = batch_data['image_bi_cur'] 
             # plt.figure()
             # plt.imshow(img_cur[0].cpu().reshape((50,50,3))) 
@@ -420,7 +423,7 @@ parser.add_argument('--folder-name', default='test_RGB',
                     help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=500, metavar='N',
+parser.add_argument('--epochs', type=int, default=1000, metavar='N',
                     help='number of epochs to train (default: 500)')
 parser.add_argument('--gamma-act', type=int, default=450, metavar='N',
                     help='scale coefficient for loss of action (default: 150*3)')   
@@ -446,7 +449,7 @@ torch.manual_seed(args.seed)
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 22515
+total_img_num = 20000#22515
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_clean_all_resize50', total_img_num)
 #image_paths_ori = create_image_path('rope_all_ori', total_img_num)
@@ -464,9 +467,9 @@ transform = transforms.Compose([Translation(10),
 trainset = MyDataset(image_paths_bi[0:train_num], resz_act[0:train_num], transform=ToTensorRGB())
 testset = MyDataset(image_paths_bi[train_num:], resz_act[train_num:], transform=ToTensorRGB())
 trainloader = DataLoader(trainset, batch_size=args.batch_size,
-                        shuffle=True, num_workers=4, collate_fn=my_collate)
+                        shuffle=True, num_workers=1, collate_fn=my_collate)
 testloader = DataLoader(testset, batch_size=args.batch_size,
-                        shuffle=True, num_workers=4, collate_fn=my_collate)                        
+                        shuffle=True, num_workers=1, collate_fn=my_collate)                        
 print('***** Finish Preparing Data *****')
 
 # train var
@@ -508,7 +511,7 @@ test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_
 
 
 for epoch in range(init_epoch, epochs+1):                                                
-    train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch, recon_model, dyn_model, epoch_thres=int(epochs/2)) # change here
+    train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch, recon_model, dyn_model, epoch_thres=500) # change here
     test_loss, test_img_loss, test_act_loss, test_latent_loss, test_pred_loss = test_new(epoch, recon_model, dyn_model)
     train_loss_all.append(train_loss)
     train_img_loss_all.append(train_img_loss)
