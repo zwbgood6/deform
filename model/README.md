@@ -1,10 +1,13 @@
 ## Model Architecture
 
-![State model](./image/state_model.pdf)
+State Model
+<img src='./image/state_model.pdf' align="middle" width=720>
 
-![Action model]()
+Action Model
+<img src='./image/action_model.pdf' align="middle" width=720>
 
-![Dynamics model]()
+Dynamics model
+<img src='./image/dynamics_model.pdf' align="middle" width=720>
 
 ## Hyperparameters
 
