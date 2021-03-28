@@ -1,5 +1,7 @@
 import numpy as np                   
 import math
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 from matplotlib.lines import Line2D

@@ -5,6 +5,8 @@ import numpy as np
 import random
 import math
 from PIL import Image
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data.dataloader import default_collate
@@ -29,17 +31,13 @@ class MyDataset(Dataset):
         none_sample = {'image_bi_pre': None, 'image_bi_cur': None, 'image_bi_post': None, 'resz_action_pre': None, 'resz_action_cur': None}
         # edge cases, use index in [1,n-1) 
         if index == 0:
-            if n == 2:
                 index = 1
-            else:    
-                index = np.random.randint(1, n-1)
         if index == n-1:
-            if n == 2:
-                index = 1
-            else:    
                 index = np.random.randint(1, n-1)
 
         # load action 
+        # if index > 3509:
+        #     return none_sample
         resz_action_pre = self.resz_actions[index-1]
         resz_action_cur = self.resz_actions[index]
         # decide if action is valid
@@ -415,6 +413,11 @@ def my_collate(batch):
     from https://discuss.pytorch.org/t/questions-about-dataloader-and-dataset/806/8
     '''
     batch = list(filter(lambda x: x['image_bi_post'] is not None, batch))
+    #print("the lengh of the batch is {} \n".format(len(batch)))
+    #np.save("/home/greyscale/Desktop/batch.npy", default_collate(batch))
+    if len(batch) == 0:
+        return np.load("/home/greyscale/Desktop/batch.npy", allow_pickle=True)
+    #print("The batch is {} \n".format(default_collate(batch)))
     return default_collate(batch)
 
 def create_image_path(folder, total_img_num):
