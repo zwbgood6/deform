@@ -1,6 +1,4 @@
 # deform
 
-```
-pip install torch torchvision
-pip install matplotlib
-```
+This branch contains all the testing code without cleaning.
+
