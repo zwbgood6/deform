@@ -3,8 +3,8 @@
 ## Introduction
 This repository contains the code for the paper - Deformable Linear Object Prediction Using Locally Linear Latent Dynamics.
 
-Access the [Paper]() on Arxiv <br /> 
-Author: [Wenbo Zhang](), [Karl Schmeckpaper](https://sites.google.com/view/karlschmeckpeper), [Pratik Chaudhari](https://pratikac.github.io/), [Kostas Daniilidis](https://www.cis.upenn.edu/~kostas/) <br />
+Access the [Paper](https://arxiv.org/pdf/2103.14184.pdf) on Arxiv <br /> 
+Author: [Wenbo Zhang](https://zwbgood6.github.io/), [Karl Schmeckpaper](https://sites.google.com/view/karlschmeckpeper), [Pratik Chaudhari](https://pratikac.github.io/), [Kostas Daniilidis](https://www.cis.upenn.edu/~kostas/) <br />
 GRASP Laboratory, University of Pennsylvania <br />
 The 2021 International Conference on Robotics and Automation (ICRA 2021), Xi'an, China
 
