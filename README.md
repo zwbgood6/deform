@@ -11,7 +11,12 @@ The 2021 International Conference on Robotics and Automation (ICRA 2021), Xi'an,
 ## Citation
 If you use this code for your research, please cite our [paper]():
 ```
-TBD
+@article{zhang2021deformable,
+  title={Deformable Linear Object Prediction Using Locally Linear Latent Dynamics},
+  author={Zhang, Wenbo and Schmeckpeper, Karl and Chaudhari, Pratik and Daniilidis, Kostas},
+  journal={IEEE International Conference on Robotics and Automation (ICRA)},
+  year={2021}
+}
 ```
 
 ## Running the code
