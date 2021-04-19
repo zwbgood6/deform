@@ -9,7 +9,7 @@ GRASP Laboratory, University of Pennsylvania <br />
 The 2021 International Conference on Robotics and Automation (ICRA 2021), Xi'an, China
 
 ## Citation
-If you use this code for your research, please cite our [paper]():
+If you use this code for your research, please cite our paper:
 ```
 @article{zhang2021deformable,
   title={Deformable Linear Object Prediction Using Locally Linear Latent Dynamics},
