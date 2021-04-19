@@ -71,7 +71,6 @@ After training, run
 python -m deform.model.pred_nn_large_linear_seprt_np_loop_Kp_Lpa
 
 ```
-### CEM
 
 ### Issues
 Please post a GitHub issue for any code related questions.  
