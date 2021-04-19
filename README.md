@@ -68,7 +68,7 @@ python -m deform.model.nn_large_linear_seprt_no_loop_Kp_Lpa
 ### Prediction
 After training, run
 ```
-python -m deform.model.pred_nn_large_linear_seprt_np_loop_Kp_Lpa
+python -m deform.model.predict_large_linear_seprt_no_loop_Kp_Lpa
 
 ```
 
