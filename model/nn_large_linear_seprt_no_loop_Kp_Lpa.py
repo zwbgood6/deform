@@ -6,7 +6,7 @@ import torch
 from torch import nn, optim, sigmoid, tanh, relu
 from torch.nn import functional as F
 from torchvision.utils import save_image
-#from torch.utils.tensorboard import SummaryWriter
+
 from torch.utils.data import Dataset, DataLoader
 from deform.model.create_dataset import *
 from deform.model.hidden_dynamics import *
@@ -30,12 +30,12 @@ class CAE(nn.Module):
                                          nn.Conv2d(64, 128, 3, padding=1),
                                          nn.ReLU(),
                                          nn.MaxPool2d(3, stride=2),
-                                         nn.Conv2d(128, 128, 3, padding=1), # channel 1 32 64 64; the next batch size should be larger than 8, 4 corner features + 4 direction features
+                                         nn.Conv2d(128, 128, 3, padding=1), 
                                          nn.ReLU(),
                                          nn.Conv2d(128, 128, 3, padding=1),
                                          nn.ReLU(),
                                          nn.MaxPool2d(3, stride=2, padding=1))  
-        self.fc1 = nn.Linear(128*3*3, latent_state_dim) # size: 128*3*3 > latent_state_dim
+        self.fc1 = nn.Linear(128*3*3, latent_state_dim) 
         self.fc2 = nn.Linear(latent_state_dim, 128*3*3)       
         self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
                                           nn.ReLU(),
@@ -50,14 +50,12 @@ class CAE(nn.Module):
         # action
         self.fc5 = nn.Linear(4, latent_act_dim)
         self.fc6 = nn.Linear(latent_act_dim, latent_act_dim) 
-        self.fc7 = nn.Linear(latent_act_dim, latent_act_dim) # 10-100
+        self.fc7 = nn.Linear(latent_act_dim, latent_act_dim) 
         self.fc8 = nn.Linear(latent_act_dim, 4)  
         # add these in order to use GPU for parameters
         self.mul_tensor = torch.tensor([50, 50, 2*math.pi, 0.14]) 
         self.add_tensor = torch.tensor([0, 0, 0, 0.01]) 
-        # latent dim
-        #self.latent_act_dim = latent_act_dim
-        #self.latent_state_dim = latent_state_dim
+
 
     def encoder(self, x):
         x = self.conv_layers(x)
@@ -66,7 +64,7 @@ class CAE(nn.Module):
 
     def decoder(self, x):
         x = relu(self.fc2(x))
-        x = x.view(-1, 128, 3, 3) #(batch size, channel, H, W)
+        x = x.view(-1, 128, 3, 3) 
         return self.dconv_layers(x)
 
     def encoder_act(self, u):
@@ -78,20 +76,11 @@ class CAE(nn.Module):
         return torch.mul(sigmoid(self.fc8(h2)), self.mul_tensor.cuda()) + self.add_tensor.cuda() 
 
     def forward(self, x_cur, u, x_post):
-        # print('x_cur shape', x_cur.shape)
         g_cur = self.encoder(x_cur) 
-        # print('g_cur shape', g_cur.shape)
-        # print('u shape', u.shape)
         a = self.encoder_act(u)  
-        # print('a shape', a.shape)
         g_post = self.encoder(x_post)     
-        # print('x_cur shape', x_cur.shape)
-        # print('a shape', a.shape)
-        # print('x_post shape', x_post.shape)
-        #K_T, L_T = self.encoder_matrix(x_cur, a) 
-        # print('K_T shape', K_T.shape) 
-        # print('L_T shape', L_T.shape)        
-        return g_cur, a, g_post, self.decoder(g_cur), self.decoder_act(a)#, K_T, L_T#self.control_matrix
+       
+        return g_cur, a, g_post, self.decoder(g_cur), self.decoder_act(a)
 
 class SysDynamics(nn.Module):
     def __init__(self, latent_state_dim=80, latent_act_dim=80):
@@ -116,11 +105,10 @@ class SysDynamics(nn.Module):
                                             nn.Conv2d(512, 512, 3, padding=1),
                                             nn.ReLU(),                                            
                                             nn.MaxPool2d(3, stride=2, padding=1)) 
-        self.fc31 = nn.Linear(512*2*2, latent_state_dim*latent_state_dim) # K: 9216 -> 6400
-        self.fc32 = nn.Linear(latent_state_dim*latent_state_dim, latent_state_dim*latent_state_dim) # K: 9216 -> 6400
-        #self.fc32 = nn.Linear(3000, latent_state_dim*latent_state_dim) 
-        self.fc41 = nn.Linear(512*2*2 + latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200  
-        self.fc42 = nn.Linear(latent_state_dim*latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200       
+        self.fc31 = nn.Linear(512*2*2, latent_state_dim*latent_state_dim) 
+        self.fc32 = nn.Linear(latent_state_dim*latent_state_dim, latent_state_dim*latent_state_dim)
+        self.fc41 = nn.Linear(512*2*2 + latent_act_dim, latent_state_dim*latent_act_dim) 
+        self.fc42 = nn.Linear(latent_state_dim*latent_act_dim, latent_state_dim*latent_act_dim)    
         self.fc9 = nn.Linear(4, latent_act_dim)
         self.fc10 = nn.Linear(latent_act_dim, latent_act_dim)
         # latent dim
@@ -128,25 +116,18 @@ class SysDynamics(nn.Module):
         self.latent_state_dim = latent_state_dim
 
     def encoder_matrix(self, x, a):
-        # print('x_cur shape', x_cur.shape)
-        # print('x_post shape', x_post.shape)
-        #x = torch.cat((x_cur, x_post), 1)
-        # print('after concatenation shape', x.shape)
-        x = self.conv_layers_matrix(x) # output size: 256*6*6
-        # print('after convolution shape', x.shape)
+        x = self.conv_layers_matrix(x) 
         x = x.view(x.shape[0], -1)
-        #print('x shape', x.shape)
         xa = torch.cat((x,a), 1)
-        #print('xu shape', xa.shape)
+
         return relu(self.fc32(relu(self.fc31(x)))).view(-1, self.latent_state_dim, self.latent_state_dim), \
             relu(self.fc42(relu(self.fc41(xa)))).view(-1, self.latent_act_dim, self.latent_state_dim)
 
     def forward(self, x_cur, u):
         a = relu(self.fc10(relu(self.fc9(u))))  
         K_T, L_T = self.encoder_matrix(x_cur, a) 
-        # print('K_T shape', K_T.shape) 
-        # print('L_T shape', L_T.shape)        
-        return K_T, L_T#self.control_matrix
+     
+        return K_T, L_T
 
 def loss_function(recon_x, x):
     '''
@@ -154,8 +135,7 @@ def loss_function(recon_x, x):
     x: tensor
     '''
     return F.binary_cross_entropy(recon_x.view(-1, 2500), x.view(-1, 2500), reduction='sum')
-    # mse = torch.nn.BCELoss() # TODO: mseLoss -> binary CELoss
-    # return mse(recon_x, x.view(-1, 2500))
+
 
 def mse(recon_x, x):
     '''mean square error
@@ -166,31 +146,11 @@ def mse(recon_x, x):
 
 def loss_function_img(recon_img, img):
     return F.binary_cross_entropy(recon_img.view(-1, 2500), img.view(-1, 2500), reduction='sum')
-    # return F.mse_loss(recon_img.view(-1, 2500), img.view(-1, 2500), reduction='sum') # MSE Loss doesnt work
-
+  
 def loss_function_act(recon_act, act):
-    # recon_act = torch.div(recon_act.view(-1, 5)[:,:4], torch.tensor([50, 50, 2*math.pi, 0.14])) + torch.tensor([0,0,0,-1/14])
-    # act = torch.div(act.view(-1, 5)[:,:4], torch.tensor([50, 50, 2*math.pi, 0.14])) + torch.tensor([0,0,0,-1/14])
-    # return F.mse_loss(recon_act, act, reduction='sum')
-    # with norm
     return F.mse_loss(recon_act.view(-1, 4), act.view(-1, 4), reduction='sum')
-    # return F.mse_loss((torch.div(recon_act.view(-1, 4), torch.tensor([50, 50, 2*math.pi, 0.14, 1])) + torch.tensor([0,0,0,-1/14,0])), 
-    #                   (torch.div(act.view(-1, 5), torch.tensor([50, 50, 2*math.pi, 0.14, 1])) + torch.tensor([0,0,0,-1/14,0])), 
-    #                   reduction='sum')
-    # without norm
-    #return F.mse_loss(recon_act.view(-1, 5), act.view(-1, 5), reduction='sum')
-
-# def loss_function_latent(image_pre, image_post, action):
-#     G = get_G(image_pre, image_post)
-#     U = get_U(action)
-#     L = get_control_matrix(G, U)
-#     loss_latent = get_error(G, U, L)
-#     return loss_latent
 
 def loss_function_latent_linear(latent_img_pre, latent_img_post, latent_action, K_T, L_T):
-    # print('latent image pre', latent_img_pre.view(latent_img_pre.shape[0], 1, -1).shape)
-    # print('K_T', K_T.shape)
-    # print('multiplication', torch.matmul(latent_img_pre.view(latent_img_pre.shape[0], 1, -1), K_T).shape)
     G = latent_img_post.view(latent_img_post.shape[0], 1, -1) - torch.matmul(latent_img_pre.view(latent_img_pre.shape[0], 1, -1), K_T)
     return get_error_linear(G, latent_action, L_T)
 
@@ -198,20 +158,6 @@ def loss_function_pred_linear(img_post, latent_img_pre, latent_act, K_T, L_T):
     recon_latent_img_post = get_next_state_linear(latent_img_pre, latent_act, K_T, L_T)
     recon_img_post = recon_model.decoder(recon_latent_img_post) 
     return F.binary_cross_entropy(recon_img_post.view(-1, 2500), img_post.view(-1, 2500), reduction='sum')
-    #return F.mse_loss(recon_img_post.view(-1, 2500), img_post.view(-1, 2500), reduction='sum') # MSE loss doesn't work
-
-# def get_U(action):         
-#     action = action.to(device).float().view(-1, 5) 
-#     action = model.encoder_act(action).detach().cpu().numpy() # TODO: change it to tensor rather than array
-#     return np.array(action)
-
-# def get_G(image_pre, image_post):
-#     image_pre = image_pre.float().to(device).view(-1, 1, 50, 50) 
-#     image_post = image_post.float().to(device).view(-1, 1, 50, 50)
-#     n = image_pre.shape[0] 
-#     latent_pre = model.encoder(image_pre).detach().cpu().numpy().reshape(n,-1)
-#     latent_post = model.encoder(image_pre).detach().cpu().numpy().reshape(n,-1)  # TODO: change it to tensor rather than array
-#     return latent_post - latent_pre
 
 def constraint_loss(steps, idx, trainset, U_latent, L):
     loss = 0
@@ -249,24 +195,15 @@ def train_new(epoch, recon_model, dyn_model, epoch_thres=500):
             recon_optimizer.zero_grad()
             # model
             latent_img_cur, latent_act, latent_img_post, recon_img_cur, recon_act = recon_model(img_cur, act, img_post)
-            #K_T, L_T = dyn_model(img_cur, act)
-            # prediction
-            #pred_latent_img_post = get_next_state_linear(latent_img_cur, latent_act, K_T, L_T)
-            #pred_img_post = model.decoder(pred_latent_img_post)        
             # loss
             loss_img = loss_function_img(recon_img_cur, img_cur)
             loss_act = loss_function_act(recon_act, act)
-            #loss_latent = loss_function_latent_linear(latent_img_cur, latent_img_post, latent_act, K_T, L_T) # TODO: add prediction loss, decode the latent state to predicted state     
-            #loss_predict = loss_function_pred_linear(img_post, latent_img_cur, latent_act, K_T, L_T)
-            loss = loss_img + GAMMA_act * loss_act# + GAMMA_latent * loss_latent + GAMMA_pred * loss_predict
+            loss = loss_img + GAMMA_act * loss_act
             loss.backward()
-            #plot_grad_flow(model.named_parameters(), folder_name)
             train_loss += loss.item()
             img_loss += loss_img.item()
             act_loss += GAMMA_act * loss_act.item()
-            #latent_loss += GAMMA_latent * loss_latent.item()
-            #pred_loss += GAMMA_pred * loss_predict.item()
-            #torch.cuda.empty_cache() # prevent CUDA out of memory RuntimeError
+
             recon_optimizer.step()
             if batch_idx % 5 == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -316,19 +253,14 @@ def train_new(epoch, recon_model, dyn_model, epoch_thres=500):
             pred_latent_img_post = get_next_state_linear(latent_img_cur, latent_act, K_T, L_T)
             pred_img_post = recon_model.decoder(pred_latent_img_post)        
             # loss
-            #loss_img = loss_function_img(recon_img_cur, img_cur)
-            #loss_act = loss_function_act(recon_act, act)
-            loss_latent = loss_function_latent_linear(latent_img_cur, latent_img_post, latent_act, K_T, L_T) # TODO: add prediction loss, decode the latent state to predicted state     
+            loss_latent = loss_function_latent_linear(latent_img_cur, latent_img_post, latent_act, K_T, L_T) 
             loss_predict = loss_function_pred_linear(img_post, latent_img_cur, latent_act, K_T, L_T)
             loss = GAMMA_latent * loss_latent + GAMMA_pred * loss_predict
             loss.backward()
-            #plot_grad_flow(model.named_parameters(), folder_name)
             train_loss += loss.item()
-            #img_loss += loss_img.item()
-            #act_loss += GAMMA_act * loss_act.item()
             latent_loss += GAMMA_latent * loss_latent.item()
             pred_loss += GAMMA_pred * loss_predict.item()
-            #torch.cuda.empty_cache() # prevent CUDA out of memory RuntimeError
+
             dyn_optimizer.step()
             if batch_idx % 5 == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -338,7 +270,7 @@ def train_new(epoch, recon_model, dyn_model, epoch_thres=500):
             # reconstruction
             if batch_idx == 0:
                 n = min(batch_data['image_bi_cur'].size(0), 8)
-                comparison = torch.cat([batch_data['image_bi_cur'][:n],                 # current image
+                comparison = torch.cat([batch_data['image_bi_cur'][:n],               # current image
                                     recon_img_cur.view(-1, 1, 50, 50).cpu()[:n],      # reconstruction of current image
                                     batch_data['image_bi_post'][:n],                  # post image
                                     pred_img_post.view(-1, 1, 50, 50).cpu()[:n]])     # prediction of post image
@@ -409,7 +341,7 @@ def test_new(epoch, recon_model, dyn_model):
 # args
 parser = argparse.ArgumentParser(description='CAE Rope Deform Example')
 parser.add_argument('--folder-name', default='test', 
-                    help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
+                    help='set folder name to save image files')
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
 parser.add_argument('--epochs', type=int, default=1000, metavar='N',
@@ -433,26 +365,20 @@ args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 torch.manual_seed(args.seed)
 
-# Write the output
-#writer = SummaryWriter()
 
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 10#22515
+total_img_num = 22515
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
-#image_paths_ori = create_image_path('rope_all_ori', total_img_num)
 resz_act_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
-#ori_act_path = './rope_dataset/rope_all_ori/actions.npy'
 resz_act = np.load(resz_act_path)
-#ori_act = np.load(ori_act_path)
 # transform = transforms.Compose([Translation(10), 
 #                                 HFlip(0.5), 
 #                                 VFlip(0.5), 
 #                                 ToTensor()])   
 transform = transforms.Compose([Translation(10), 
                                 ToTensor()])                           
-#dataset = MyDataset(image_paths_bi, resz_act, transform=ToTensor())
 trainset = MyDataset(image_paths_bi[0:train_num], resz_act[0:train_num], transform=transform)
 testset = MyDataset(image_paths_bi[train_num:], resz_act[train_num:], transform=ToTensor())
 trainloader = DataLoader(trainset, batch_size=args.batch_size,
@@ -462,7 +388,7 @@ testloader = DataLoader(testset, batch_size=args.batch_size,
 print('***** Finish Preparing Data *****')
 
 # train var
-MATH = args.math # True: use regression; False: use backpropagation
+MATH = args.math 
 GAMMA_act = args.gamma_act
 GAMMA_latent = args.gamma_lat
 GAMMA_pred = args.gamma_pred
@@ -500,7 +426,7 @@ test_loss_all, test_img_loss_all, test_act_loss_all, test_latent_loss_all, test_
 
 
 for epoch in range(init_epoch, epochs+1):                                                
-    train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch, recon_model, dyn_model, epoch_thres=int(epochs/2)) # change here
+    train_loss, train_img_loss, train_act_loss, train_latent_loss, train_pred_loss = train_new(epoch, recon_model, dyn_model, epoch_thres=int(epochs/2)) 
     test_loss, test_img_loss, test_act_loss, test_latent_loss, test_pred_loss = test_new(epoch, recon_model, dyn_model)
     train_loss_all.append(train_loss)
     train_img_loss_all.append(train_img_loss)
@@ -533,7 +459,6 @@ for epoch in range(init_epoch, epochs+1):
                     }, 
                     PATH)
 
-#torch.cuda.empty_cache()
 
 save_data(folder_name, epochs, train_loss_all, train_img_loss_all, train_act_loss_all,
           train_latent_loss_all, train_pred_loss_all, test_loss_all, test_img_loss_all,

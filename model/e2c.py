@@ -7,7 +7,6 @@ from torch import nn, optim, sigmoid, tanh, relu
 from torch.autograd import Variable
 from torch.nn import functional as F
 from torchvision.utils import save_image
-#from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader
 from deform.model.create_dataset import *
 from deform.model.hidden_dynamics import *
@@ -60,12 +59,6 @@ def KLDGaussian(Q, N, eps=1e-8):
     b = sum((mu1 - mu0).pow(2) / s12)  # difference-of-means term
     c = 2. * (sum(N.logsigma - Q.logsigma) - torch.log(1. + sum(v * r) + eps))  # ratio-of-determinants term.
 
-    #
-    # print('trace: %s' % a)
-    # print('mu_diff: %s' % b)
-    # print('k: %s' % k)
-    # print('det: %s' % c)
-
     return 0.5 * (a + b - k + c)
 
 class E2C(nn.Module):
@@ -80,7 +73,7 @@ class E2C(nn.Module):
                                          nn.Conv2d(64, 128, 3, padding=1),
                                          nn.ReLU(),
                                          nn.MaxPool2d(3, stride=2),
-                                         nn.Conv2d(128, 128, 3, padding=1), # channel 1 32 64 64; the next batch size should be larger than 8, 4 corner features + 4 direction features
+                                         nn.Conv2d(128, 128, 3, padding=1), 
                                          nn.ReLU(),
                                          nn.Conv2d(128, 128, 3, padding=1),
                                          nn.ReLU(),
@@ -135,8 +128,6 @@ class E2C(nn.Module):
         B = self.fc_B(h).view(-1, self.dim_z, self.dim_u)
         o = self.fc_o(h).reshape((-1, self.dim_z, 1))
 
-        # need to compute the parameters for distributions
-        # as well as for the samples
         u = u.unsqueeze(2)
 
         d = A.bmm(Q.mu.unsqueeze(2)).add(B.bmm(u)).add(o).squeeze(2)
@@ -245,11 +236,6 @@ def train(e2c_model):
                                 x_dec.view(-1, 1, 50, 50).cpu()[:n]])      # reconstruction of current image                                                 
             save_image(comparison.cpu(),
                     './result/{}/reconstruction_train/reconstruct_epoch_{}.png'.format(folder_name, epoch), nrow=n)      
-            # plot_sample(batch_data['image_bi_cur'][:n].detach().cpu().numpy(), 
-            #             batch_data['image_bi_post'][:n].detach().cpu().numpy(), 
-            #             batch_data['resz_action_cur'][:n].detach().cpu().numpy(), 
-            #             recon_act.view(-1, 4)[:n].detach().cpu().numpy(), 
-            #             './result/{}/reconstruction_act_train/recon_epoch_{}.png'.format(folder_name, epoch))  
     print('====> Epoch: {} Average loss: {:.4f}'.format(
         epoch, train_loss / len(trainloader.dataset)))
     n = len(trainloader.dataset)      
@@ -298,7 +284,7 @@ def test(e2c_model):
 # args
 parser = argparse.ArgumentParser(description='E2C Rope Deform Example')
 parser.add_argument('--folder-name', default='test_E2C', 
-                    help='set folder name to save image files')#folder_name = 'test_new_train_scale_large'
+                    help='set folder name to save image files')
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 64)')
 parser.add_argument('--epochs', type=int, default=2, metavar='N',
@@ -323,21 +309,17 @@ torch.manual_seed(args.seed)
           
 # dataset
 print('***** Preparing Data *****')
-total_img_num = 100#22515
+total_img_num = 22515
 train_num = int(total_img_num * 0.8)
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
-#image_paths_ori = create_image_path('rope_all_ori', total_img_num)
 resz_act_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
-#ori_act_path = './rope_dataset/rope_all_ori/actions.npy'
 resz_act = np.load(resz_act_path)
-#ori_act = np.load(ori_act_path)
 # transform = transforms.Compose([Translation(10), 
 #                                 HFlip(0.5), 
 #                                 VFlip(0.5), 
 #                                 ToTensor()])   
 transform = transforms.Compose([Translation(10), 
                                 ToTensor()])                           
-#dataset = MyDataset(image_paths_bi, resz_act, transform=ToTensor())
 trainset = MyDataset(image_paths_bi[0:train_num], resz_act[0:train_num], transform=transform)
 testset = MyDataset(image_paths_bi[train_num:], resz_act[train_num:], transform=ToTensor())
 trainloader = DataLoader(trainset, batch_size=args.batch_size,

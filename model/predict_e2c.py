@@ -54,12 +54,6 @@ def KLDGaussian(Q, N, eps=1e-8):
     b = sum((mu1 - mu0).pow(2) / s12)  # difference-of-means term
     c = 2. * (sum(N.logsigma - Q.logsigma) - torch.log(1. + sum(v * r) + eps))  # ratio-of-determinants term.
 
-    #
-    # print('trace: %s' % a)
-    # print('mu_diff: %s' % b)
-    # print('k: %s' % k)
-    # print('det: %s' % c)
-
     return 0.5 * (a + b - k + c)
 
 class E2C(nn.Module):
@@ -74,7 +68,7 @@ class E2C(nn.Module):
                                          nn.Conv2d(64, 128, 3, padding=1),
                                          nn.ReLU(),
                                          nn.MaxPool2d(3, stride=2),
-                                         nn.Conv2d(128, 128, 3, padding=1), # channel 1 32 64 64; the next batch size should be larger than 8, 4 corner features + 4 direction features
+                                         nn.Conv2d(128, 128, 3, padding=1),
                                          nn.ReLU(),
                                          nn.Conv2d(128, 128, 3, padding=1),
                                          nn.ReLU(),
@@ -129,8 +123,6 @@ class E2C(nn.Module):
         B = self.fc_B(h).view(-1, self.dim_z, self.dim_u)
         o = self.fc_o(h).reshape((-1, self.dim_z, 1))
 
-        # need to compute the parameters for distributions
-        # as well as for the samples
         u = u.unsqueeze(2)
 
         d = A.bmm(Q.mu.unsqueeze(2)).add(B.bmm(u)).add(o).squeeze(2)
@@ -360,13 +352,13 @@ def predict():
                             './result/{}/prediction_with_action_step{}/recon_Pred_epoch_{}.png'.format(folder_name, step, batch_idx))
                             
 print('***** Preparing Data *****')
-total_img_num = 200#22515
+total_img_num = 22515
 image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_img_num)
 action_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
 actions = np.load(action_path)
 dataset = MyDatasetMultiPred10(image_paths_bi, actions, transform=ToTensorMultiPred10())   
-dataloader = DataLoader(dataset, batch_size=32, # batch size 32 to 16
-                        shuffle=True, num_workers=4, collate_fn=my_collate)    # num_workers 4->1                                         
+dataloader = DataLoader(dataset, batch_size=32, 
+                        shuffle=True, num_workers=4, collate_fn=my_collate)                                       
 print('***** Finish Preparing Data *****')
 
 folder_name = 'test_E2C'

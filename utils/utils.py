@@ -79,15 +79,13 @@ def create_folder(folder_name):
         os.makedirs('./result/' + folder_name + '/reconstruction_act_test')    
 
 def rect(poke, c, label=None):
-    # from rope.ipynb in Berkeley's rope dataset file
     x, y, t, l = poke
     dx = -100 * l * math.cos(t)
     dy = -100 * l * math.sin(t)
     arrow = plt.arrow(x, y, dx, dy, width=0.001, head_width=6, head_length=6, color=c, label=label)        
-    #plt.legend([arrow,], ['My label',])
+
 
 def plot_action(resz_action, recon_action, directory):
-    # from rope.ipynb in Berkeley's rope dataset file
     plt.figure()
     # upper row original
     plt.subplot(1, 2, 1)
@@ -108,7 +106,6 @@ def change_img_dim(img):
     return img_tmp
 
 def plot_sample(img_before, img_after, resz_action, recon_action, directory):
-    # from rope.ipynb in Berkeley's rope dataset file
     plt.figure()
     N = int(img_before.shape[0])
     for i in range(N):
@@ -116,26 +113,22 @@ def plot_sample(img_before, img_after, resz_action, recon_action, directory):
         plt.subplot(3, N, i+1)
         rect(resz_action[i], "blue")
         plt.imshow(change_img_dim(img_before[i]))
-        #plt.imshow(img_before[i].reshape((50,50,-1)))
         plt.axis('off') 
         # middle row reconstruction
         plt.subplot(3, N, i+1+N)
         rect(recon_action[i], "red")
         plt.imshow(change_img_dim(img_before[i]))
-        #plt.imshow(img_before[i].reshape((50,50,-1)))
         plt.axis('off')
         # lower row: next image after action
         plt.subplot(3, N, i+1+2*N)
         plt.imshow(change_img_dim(img_after[i]))
-        #plt.imshow(img_after[i].reshape((50,50,-1)))
         plt.axis('off')
     plt.savefig(directory) 
     plt.close()
 
 def plot_cem_sample(img_before, img_after, img_after_pred, resz_action, recon_action, directory):
-    # from rope.ipynb in Berkeley's rope dataset file
+    # source from rope.ipynb in Berkeley's rope dataset file
     plt.figure()
-    #N = int(img_before.shape[0])
     # upper row original
     plt.subplot(2, 2, 1)
     rect(resz_action, "blue", "Ground Truth Action")
@@ -232,7 +225,6 @@ def generate_initial_points(x, y, num_points, link_length):
     y_all = [y]
     for _ in range(num_points-1):
         phi = np.random.uniform(-np.pi/10, np.pi/10)
-        #phi = np.random.uniform(0, np.pi/2)
         x1, y1 = x + link_length * np.cos(phi), y + link_length * np.sin(phi)
         x_all.append(x1)
         y_all.append(y1)
@@ -261,8 +253,8 @@ def generate_new_line(line_x_all, line_y_all, index, move_angle, move_length, li
 
     num_points = np.size(line_x_all)
     # initialize new_line_x_all and new_line_y_all
-    new_line_x_all = [0] * num_points #np.zeros_like(line_x_all)
-    new_line_y_all = [0] * num_points #np.zeros_like(line_y_all)
+    new_line_x_all = [0] * num_points 
+    new_line_y_all = [0] * num_points 
 
     # action
     action = get_action(move_angle, move_length)
@@ -305,8 +297,7 @@ def generate_new_line(line_x_all, line_y_all, index, move_angle, move_length, li
     # # move the touching line
     # touch_line_pos += [action[0], action[1], action[0], action[1]]
 
-    # # 
-    # #  
+
     return new_line_x_all, new_line_y_all
 
 def generate_new_point_pos_on_the_line(grip_pos_after, moved_pos_before, link_length):
@@ -339,12 +330,6 @@ def get_line_index(gripper_x_pos, x_all):
 
     return line_index   
 
-def collision_check():
-    # check if gripper action moves the line   
-    # move the line: return true
-    # not move the line: return false
-
-    return
 
 def plot_train_loss(file_name, folder_name):
     train_loss = np.load(file_name)
@@ -465,8 +450,7 @@ def plot_test_kld_loss(file_name, folder_name):
     plt.ylabel('Loss')
     plt.savefig('./result/{}/plot/test_kld_loss.png'.format(folder_name))
     plt.close()
-# def plot_separate_loss(file_names, folder_name):
-#     for file_name in file_names:
+
 def plot_train_bound_loss(file_name, folder_name):
     bound_loss = np.load(file_name)
     plt.figure()
@@ -508,13 +492,13 @@ def plot_test_kl_loss(file_name, folder_name):
     plt.close()
 
 def plot_all_train_loss_with_noise(train, test, img, act, latent, pred, kld, folder_name):
-    train_loss = np.load(train)#[10:]
-    test_loss = np.load(test)#[10:]
-    img_loss = np.load(img)#[10:]
-    act_loss = np.load(act)#[10:]
-    latent_loss = np.load(latent)#[10:]
-    pred_loss = np.load(pred)#[10:]
-    kld_loss = np.load(kld)#[10:]
+    train_loss = np.load(train)
+    test_loss = np.load(test)
+    img_loss = np.load(img)
+    act_loss = np.load(act)
+    latent_loss = np.load(latent)
+    pred_loss = np.load(pred)
+    kld_loss = np.load(kld)
     plt.figure()
     train_curve, = plt.plot(train_loss, label='Train')
     test_curve, = plt.plot(test_loss, label='Test')
@@ -531,12 +515,12 @@ def plot_all_train_loss_with_noise(train, test, img, act, latent, pred, kld, fol
     plt.close()
 
 def plot_all_test_loss_with_noise(test, img, act, latent, pred, kld, folder_name):
-    test_loss = np.load(test)#[20:]
-    img_loss = np.load(img)#[20:]
-    act_loss = np.load(act)#[20:]
-    latent_loss = np.load(latent)#[20:]
-    pred_loss = np.load(pred)#[20:]
-    kld_loss = np.load(kld)#[20:]
+    test_loss = np.load(test)
+    img_loss = np.load(img)
+    act_loss = np.load(act)
+    latent_loss = np.load(latent)
+    pred_loss = np.load(pred)
+    kld_loss = np.load(kld)
     plt.figure()
     test_curve, = plt.plot(test_loss, label='Test')
     img_curve, = plt.plot(img_loss, label='Image')
@@ -552,12 +536,12 @@ def plot_all_test_loss_with_noise(test, img, act, latent, pred, kld, folder_name
     plt.close()
 
 def plot_all_train_loss_without_noise(train, test, img, act, latent, pred, folder_name):
-    train_loss = np.load(train)#[10:]
-    test_loss = np.load(test)#[10:]
-    img_loss = np.load(img)#[10:]
-    act_loss = np.load(act)#[10:]
-    latent_loss = np.load(latent)#[10:]
-    pred_loss = np.load(pred)#[10:]
+    train_loss = np.load(train)
+    test_loss = np.load(test)
+    img_loss = np.load(img)
+    act_loss = np.load(act)
+    latent_loss = np.load(latent)
+    pred_loss = np.load(pred)
     plt.figure()
     train_curve, = plt.plot(train_loss, label='Train')
     test_curve, = plt.plot(test_loss, label='Test')
@@ -573,11 +557,11 @@ def plot_all_train_loss_without_noise(train, test, img, act, latent, pred, folde
     plt.close()
 
 def plot_all_test_loss_without_noise(test, img, act, latent, pred, folder_name):
-    test_loss = np.load(test)#[20:]
-    img_loss = np.load(img)#[20:]
-    act_loss = np.load(act)#[20:]
-    latent_loss = np.load(latent)#[20:]
-    pred_loss = np.load(pred)#[20:]
+    test_loss = np.load(test)
+    img_loss = np.load(img)
+    act_loss = np.load(act)
+    latent_loss = np.load(latent)
+    pred_loss = np.load(pred)
     plt.figure()
     test_curve, = plt.plot(test_loss, label='Test')
     img_curve, = plt.plot(img_loss, label='Image')
@@ -624,31 +608,3 @@ def save_e2c_data(folder_name, epochs, train_loss_all, train_bound_loss_all, tra
     np.save('./result/{}/test_bound_loss_epoch{}.npy'.format(folder_name, epochs), test_bound_loss_all)
     np.save('./result/{}/test_kl_loss_epoch{}.npy'.format(folder_name, epochs), test_kl_loss_all)
     np.save('./result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs), test_pred_loss_all)
-
-# epochs = 800
-# folder_name = 'test_freeze_Kp_Lpa'
-# noise = False # consider whether adding noise in the latent dynamics
-
-# train = './result/{}/train_loss_epoch{}.npy'.format(folder_name, epochs)
-# train_img = './result/{}/train_img_loss_epoch{}.npy'.format(folder_name, epochs)
-# train_act = './result/{}/train_act_loss_epoch{}.npy'.format(folder_name, epochs)
-# train_latent = './result/{}/train_latent_loss_epoch{}.npy'.format(folder_name, epochs)
-# train_pred = './result/{}/train_pred_loss_epoch{}.npy'.format(folder_name, epochs)
-
-# test = './result/{}/test_loss_epoch{}.npy'.format(folder_name, epochs)
-# test_img = './result/{}/test_img_loss_epoch{}.npy'.format(folder_name, epochs)
-# test_act = './result/{}/test_act_loss_epoch{}.npy'.format(folder_name, epochs)
-# test_latent = './result/{}/test_latent_loss_epoch{}.npy'.format(folder_name, epochs)
-# test_pred = './result/{}/test_pred_loss_epoch{}.npy'.format(folder_name, epochs)
-
-# if noise:
-#     train_kld = './result/{}/train_kld_loss_epoch{}.npy'.format(folder_name, epochs)
-#     test_kld = './result/{}/test_kld_loss_epoch{}.npy'.format(folder_name, epochs)
-#     plot_all_train_loss_with_noise(train, test, train_img, train_act, train_latent, train_pred, train_kld, folder_name)
-#     plot_all_test_loss_with_noise(test, test_img, test_act, test_latent, test_pred, test_kld, folder_name)
-# else:
-#     plot_all_train_loss_without_noise(train, test, train_img, train_act, train_latent, train_pred, folder_name)
-#     plot_all_test_loss_without_noise(test, test_img, test_act, test_latent, test_pred, folder_name)
-
-
-

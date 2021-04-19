@@ -25,12 +25,12 @@ class CAE(nn.Module):
                                          nn.Conv2d(64, 128, 3, padding=1),
                                          nn.ReLU(),
                                          nn.MaxPool2d(3, stride=2),
-                                         nn.Conv2d(128, 128, 3, padding=1), # channel 1 32 64 64; the next batch size should be larger than 8, 4 corner features + 4 direction features
+                                         nn.Conv2d(128, 128, 3, padding=1), 
                                          nn.ReLU(),
                                          nn.Conv2d(128, 128, 3, padding=1),
                                          nn.ReLU(),
                                          nn.MaxPool2d(3, stride=2, padding=1))  
-        self.fc1 = nn.Linear(128*3*3, latent_state_dim) # size: 128*3*3 > latent_state_dim
+        self.fc1 = nn.Linear(128*3*3, latent_state_dim)
         self.fc2 = nn.Linear(latent_state_dim, 128*3*3)       
         self.dconv_layers = nn.Sequential(nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1),
                                           nn.ReLU(),
@@ -45,14 +45,12 @@ class CAE(nn.Module):
         # action
         self.fc5 = nn.Linear(4, latent_act_dim)
         self.fc6 = nn.Linear(latent_act_dim, latent_act_dim) 
-        self.fc7 = nn.Linear(latent_act_dim, latent_act_dim) # 10-100
+        self.fc7 = nn.Linear(latent_act_dim, latent_act_dim) 
         self.fc8 = nn.Linear(latent_act_dim, 4)  
         # add these in order to use GPU for parameters
         self.mul_tensor = torch.tensor([50, 50, 2*math.pi, 0.14]) 
         self.add_tensor = torch.tensor([0, 0, 0, 0.01]) 
-        # latent dim
-        #self.latent_act_dim = latent_act_dim
-        #self.latent_state_dim = latent_state_dim
+
 
     def encoder(self, x):
         x = self.conv_layers(x)
@@ -61,7 +59,7 @@ class CAE(nn.Module):
 
     def decoder(self, x):
         x = relu(self.fc2(x))
-        x = x.view(-1, 128, 3, 3) #(batch size, channel, H, W)
+        x = x.view(-1, 128, 3, 3) 
         return self.dconv_layers(x)
 
     def encoder_act(self, u):
@@ -77,20 +75,11 @@ class CAE(nn.Module):
 
 
     def forward(self, x_cur, u, x_post):
-        # print('x_cur shape', x_cur.shape)
         g_cur = self.encoder(x_cur) 
-        # print('g_cur shape', g_cur.shape)
-        # print('u shape', u.shape)
         a = self.encoder_act(u)  
-        # print('a shape', a.shape)
         g_post = self.encoder(x_post)     
-        # print('x_cur shape', x_cur.shape)
-        # print('a shape', a.shape)
-        # print('x_post shape', x_post.shape)
-        #K_T, L_T = self.encoder_matrix(x_cur, a) 
-        # print('K_T shape', K_T.shape) 
-        # print('L_T shape', L_T.shape)        
-        return g_cur, a, g_post, self.decoder(g_cur), self.decoder_act(a)#, K_T, L_T#self.control_matrix
+       
+        return g_cur, a, g_post, self.decoder(g_cur), self.decoder_act(a)
 
 class SysDynamics(nn.Module):
     def __init__(self, latent_state_dim=80, latent_act_dim=80):
@@ -115,37 +104,29 @@ class SysDynamics(nn.Module):
                                             nn.Conv2d(512, 512, 3, padding=1),
                                             nn.ReLU(),                                            
                                             nn.MaxPool2d(3, stride=2, padding=1)) 
-        self.fc31 = nn.Linear(512*2*2, latent_state_dim*latent_state_dim) # K: 9216 -> 6400
-        self.fc32 = nn.Linear(latent_state_dim*latent_state_dim, latent_state_dim*latent_state_dim) # K: 9216 -> 6400
-        #self.fc32 = nn.Linear(3000, latent_state_dim*latent_state_dim) 
-        self.fc41 = nn.Linear(512*2*2 + latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200  
-        self.fc42 = nn.Linear(latent_state_dim*latent_act_dim, latent_state_dim*latent_act_dim) # L: 9216+40 -> 3200       
+        self.fc31 = nn.Linear(512*2*2, latent_state_dim*latent_state_dim)
+        self.fc32 = nn.Linear(latent_state_dim*latent_state_dim, latent_state_dim*latent_state_dim)
+        self.fc41 = nn.Linear(512*2*2 + latent_act_dim, latent_state_dim*latent_act_dim) 
+        self.fc42 = nn.Linear(latent_state_dim*latent_act_dim, latent_state_dim*latent_act_dim)     
         self.fc9 = nn.Linear(4, latent_act_dim)
         self.fc10 = nn.Linear(latent_act_dim, latent_act_dim)
-        # latent dim
+
         self.latent_act_dim = latent_act_dim
         self.latent_state_dim = latent_state_dim
 
     def encoder_matrix(self, x, a):
-        # print('x_cur shape', x_cur.shape)
-        # print('x_post shape', x_post.shape)
-        #x = torch.cat((x_cur, x_post), 1)
-        # print('after concatenation shape', x.shape)
-        x = self.conv_layers_matrix(x) # output size: 256*6*6
-        # print('after convolution shape', x.shape)
+        x = self.conv_layers_matrix(x) 
         x = x.view(x.shape[0], -1)
-        #print('x shape', x.shape)
         xa = torch.cat((x,a), 1)
-        #print('xu shape', xa.shape)
+
         return relu(self.fc32(relu(self.fc31(x)))).view(-1, self.latent_state_dim, self.latent_state_dim), \
             relu(self.fc42(relu(self.fc41(xa)))).view(-1, self.latent_act_dim, self.latent_state_dim)
 
     def forward(self, x_cur, u):
         a = relu(self.fc10(relu(self.fc9(u))))  
         K_T, L_T = self.encoder_matrix(x_cur, a) 
-        # print('K_T shape', K_T.shape) 
-        # print('L_T shape', L_T.shape)        
-        return K_T, L_T#self.control_matrix
+       
+        return K_T, L_T
 
 class NormalDistribution(object):
     """
@@ -188,12 +169,6 @@ def KLDGaussian(Q, N, eps=1e-8):
     b = sum((mu1 - mu0).pow(2) / s12)  # difference-of-means term
     c = 2. * (sum(N.logsigma - Q.logsigma) - torch.log(1. + sum(v * r) + eps))  # ratio-of-determinants term.
 
-    #
-    # print('trace: %s' % a)
-    # print('mu_diff: %s' % b)
-    # print('k: %s' % k)
-    # print('det: %s' % c)
-
     return 0.5 * (a + b - k + c)
 
 class E2C(nn.Module):
@@ -208,7 +183,7 @@ class E2C(nn.Module):
                                          nn.Conv2d(64, 128, 3, padding=1),
                                          nn.ReLU(),
                                          nn.MaxPool2d(3, stride=2),
-                                         nn.Conv2d(128, 128, 3, padding=1), # channel 1 32 64 64; the next batch size should be larger than 8, 4 corner features + 4 direction features
+                                         nn.Conv2d(128, 128, 3, padding=1), 
                                          nn.ReLU(),
                                          nn.Conv2d(128, 128, 3, padding=1),
                                          nn.ReLU(),
@@ -241,7 +216,7 @@ class E2C(nn.Module):
         # action
         self.fc5 = nn.Linear(4, dim_u*20)
         self.fc6 = nn.Linear(dim_u*20, dim_u) 
-        self.fc7 = nn.Linear(dim_u, dim_u*20) # 10-100
+        self.fc7 = nn.Linear(dim_u, dim_u*20) 
         self.fc8 = nn.Linear(dim_u*20, 4) 
         self.mul_tensor = torch.tensor([50, 50, 2*math.pi, 0.14]) 
         self.add_tensor = torch.tensor([0, 0, 0, 0.01]) 
@@ -277,8 +252,6 @@ class E2C(nn.Module):
         B = self.fc_B(h).view(-1, self.dim_z, self.dim_u)
         o = self.fc_o(h).reshape((-1, self.dim_z, 1))
 
-        # need to compute the parameters for distributions
-        # as well as for the samples
         u = u.unsqueeze(2)
 
         d = A.bmm(Q.mu.unsqueeze(2)).add(B.bmm(u)).add(o).squeeze(2)
@@ -290,8 +263,6 @@ class E2C(nn.Module):
         self.z_mean = mean
         self.z_sigma = std
         eps = torch.FloatTensor(std.size()).normal_()
-        #if std.data.is_cuda:
-        #    eps.cuda()
         eps = Variable(eps)
         return eps.mul(std.cpu()).add_(mean.cpu()).cuda(), NormalDistribution(mean, std, torch.log(std))
 
@@ -552,8 +523,8 @@ image_paths_bi = create_image_path('rope_no_loop_all_resize_gray_clean', total_i
 action_path = './rope_dataset/rope_no_loop_all_resize_gray_clean/simplified_clean_actions_all_size50.npy'
 actions = np.load(action_path)
 dataset = MyDatasetMultiPred10(image_paths_bi, actions, transform=ToTensorMultiPred10())   
-dataloader = DataLoader(dataset, batch_size=32, # batch size 32 to 16
-                        shuffle=True, num_workers=4, collate_fn=my_collate)    # num_workers 4->1                                         
+dataloader = DataLoader(dataset, batch_size=32, 
+                        shuffle=True, num_workers=4, collate_fn=my_collate)                               
 print('***** Finish Preparing Data *****')
 
 folder_name_e2c = 'test_E2C_gpu_update_loss'
