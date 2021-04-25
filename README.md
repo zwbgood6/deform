@@ -88,3 +88,5 @@ Sampling-based Model Predictive Control
 
 <img src='./image/CEM_result.png' align="middle" width=360>
 
+## License
+MIT
